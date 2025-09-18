@@ -3,6 +3,7 @@ from django.urls import reverse
 from rest_framework import serializers
 from .models import CustomUser
 from django.contrib.sites.shortcuts import get_current_site
+from rest_framework_simplejwt.tokens import RefreshToken
 
 
 
@@ -39,7 +40,32 @@ class UserLoginSerializer(serializers.Serializer):
                 'A user with this email and password was not found.'
             )
         return user
+
+
+class UserLogoutSerializer(serializers.Serializer):
+    refresh_token = serializers.CharField(max_length=255, write_only=True)
     
+    def validate(self, data):
+        refresh_token = data.get('refresh_token', None)
+
+        if refresh_token is None:
+            raise serializers.ValidationError(
+                'A refresh token is required to log out.'
+            )
+        try:
+            refresh = RefreshToken(refresh_token)
+            user_id = refresh['user_id']
+            user = CustomUser.objects.filter(id=user_id).first()
+            if user is None:
+                raise serializers.ValidationError(
+                    'A user with this refresh token was not found.'
+                )
+        except:
+            raise serializers.ValidationError(
+                'A user with this refresh token was not found.'
+            )
+        return user
+
     
 class UserSerializer(serializers.ModelSerializer):
     class Meta:

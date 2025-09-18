@@ -1,3 +1,106 @@
-from django.shortcuts import render
+from rest_framework.views import APIView, status
+from rest_framework.response import Response
+from rest_framework import permissions
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
+from .serializers import (
+    UserRegisterSerializer,
+    UserLoginSerializer,
+    UserSerializer,
+    UserPasswordChangeSerializer,
+    UserPasswordResetSerializer,
+    UserPasswordResetConfirmSerializer,
+    UserActivateSerializer,
+    UserLogoutSerializer
+    )
 
-# Create your views here.
+
+
+class UserRegisterView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = UserRegisterSerializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserActivateView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, token):
+        serializer = UserActivateSerializer(data={'token': token})
+        serializer.is_valid(raise_exception=True)
+        return Response(data={'message': 'Account activated successfully'}, status=status.HTTP_200_OK)
+
+
+class UserLoginView(APIView):
+    serializer_class = UserLoginSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid():
+            user = serializer.validated_data
+            tokens = user.get_token()
+            return Response(tokens, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserLogoutView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            serializer = UserLogoutSerializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            refresh_token = request.data['refresh_token']
+            token = RefreshToken(refresh_token)
+            token.blacklist()
+            return Response(status=status.HTTP_205_RESET_CONTENT)
+        except TokenError:
+            raise InvalidToken('Token is invalid or expired')
+
+
+
+class UserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        serializer = UserSerializer(request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    def patch(self, request):
+        serializer = UserSerializer(request.user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+class UserPasswordChangeView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        serializer = UserPasswordChangeSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        return Response(data={'message': 'Password changed successfully'}, status=status.HTTP_200_OK)
+
+
+class UserPasswordResetView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = UserPasswordResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        return Response(data={'message': 'Password reset email sent'}, status=status.HTTP_200_OK)
+
+
+class UserPasswordResetConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request, token):
+        serializer = UserPasswordResetConfirmSerializer(data={'new_password':request.data['new_password'], 'token': token})
+        serializer.is_valid(raise_exception=True)
+        return Response(data={'message': 'Password reset successfully'}, status=status.HTTP_200_OK)
