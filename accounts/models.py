@@ -1,3 +1,4 @@
+import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser
 from django.urls import reverse
@@ -16,7 +17,7 @@ class CustomUser(AbstractUser):
     is_active = models.BooleanField(default=False)
     last_login = models.DateTimeField(auto_now=True, null=True, blank=True)
     is_superuser = models.BooleanField(default=False)
-    activation_token = models.CharField(max_length=100, null=True, blank=True)
+    token = models.CharField(max_length=100, null=True, blank=True)
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['phone_number', 'first_name', 'last_name']
@@ -35,8 +36,9 @@ class CustomUser(AbstractUser):
             if self.is_superuser or self.is_staff:
                 return
             try:
+                token = self.make_token()
                 current_site = get_current_site(request=None)
-                activate_url = f"http://{current_site.domain}{reverse('accounts:activate', kwargs={'token': self.activation_token})}"
+                activate_url = f"http://{current_site.domain}{reverse('accounts:activate', kwargs={'token': token})}"
                 
                 # Email content
                 subject = 'Activate your account'
@@ -72,3 +74,8 @@ class CustomUser(AbstractUser):
             'refresh': str(refresh),
             'access': str(refresh.access_token),
         }
+    
+    def make_token(self):
+        self.token = str(uuid.uuid4())
+        self.save()
+        return self.token
