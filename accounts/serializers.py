@@ -126,7 +126,7 @@ class UserPasswordResetSerializer(serializers.Serializer):
             )
         token = user.make_token()
         current_site = get_current_site(request=None)
-        activate_url = f"http://{current_site.domain}{reverse('accounts:reset_password_confirm', kwargs={'token': token})}"
+        activate_url = f"http://{current_site.domain}{reverse('accounts:password_reset_confirm', kwargs={'token': token})}"
         
         # Email content
         subject = 'Reset your Password'

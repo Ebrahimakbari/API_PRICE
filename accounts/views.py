@@ -63,7 +63,6 @@ class UserLogoutView(APIView):
             raise InvalidToken('Token is invalid or expired')
 
 
-
 class UserView(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
