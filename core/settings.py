@@ -39,8 +39,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     #internal-apps
-    'car',
+    'cars',
     'accounts',
+    'motorcycles',
     #third-party-apps
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
