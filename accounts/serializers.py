@@ -4,6 +4,10 @@ from rest_framework import serializers
 from .models import CustomUser
 from django.contrib.sites.shortcuts import get_current_site
 from rest_framework_simplejwt.tokens import RefreshToken
+import logging
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
 
 
 
@@ -12,10 +16,37 @@ from rest_framework_simplejwt.tokens import RefreshToken
 class UserRegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['email', 'phone_number', 'first_name', 'last_name', 'password']
+        fields = ['email', 'phone_number', 'username', 'first_name', 'last_name', 'password']
         extra_kwargs = {
-            'password': {'write_only': True}
+            'password': {'write_only': True},
+            'first_name': {'required': True},
+            'last_name': {'required': True},
         }
+        
+    def create(self, validated_data):
+        user = CustomUser.objects.create_user(**validated_data)
+        return user
+
+
+class UserActivateSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=100, write_only=True)
+
+    def validate(self, data):
+        token = data.get('token', None)
+
+        if token is None:
+            raise serializers.ValidationError(
+                'A token is required to activate account.'
+            )
+        user = CustomUser.objects.filter(token=token).first()
+        if user is None:
+            raise serializers.ValidationError(
+                'A user with this token was not found.'
+            )
+        user.is_active = True
+        user.token = None
+        user.save()
+        return user
 
 
 class UserLoginSerializer(serializers.Serializer):
@@ -25,7 +56,6 @@ class UserLoginSerializer(serializers.Serializer):
     def validate(self, data):
         email = data.get('email', None)
         password = data.get('password', None)
-
         if email is None:
             raise serializers.ValidationError(
                 'An email address is required to log in.'
@@ -35,6 +65,7 @@ class UserLoginSerializer(serializers.Serializer):
                 'A password is required to log in.'
             )
         user = CustomUser.objects.filter(email=email).first()
+        print(user.check_password(password))
         if user is None or not user.check_password(password):
             raise serializers.ValidationError(
                 'A user with this email and password was not found.'
@@ -64,7 +95,10 @@ class UserLogoutSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'A user with this refresh token was not found.'
             )
-        return user
+        return {
+            'user': user,
+            'refresh_token': refresh_token
+        }
 
     
 class UserSerializer(serializers.ModelSerializer):
@@ -74,12 +108,15 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id',
             'is_active',
+            'password',
             'last_login',
             'date_joined',
             'is_superuser',
             'is_staff',
             'email',
-            'phone_number'
+            'phone_number',
+            'token',
+            'username',
             ]
     
 
@@ -113,6 +150,7 @@ class UserPasswordResetSerializer(serializers.Serializer):
     email = serializers.EmailField(max_length=255, write_only=True)
 
     def validate(self, data):
+        request = self.context['request']
         email = data.get('email', None)
 
         if email is None:
@@ -124,39 +162,42 @@ class UserPasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'A user with this email was not found.'
             )
-        token = user.make_token()
-        current_site = get_current_site(request=None)
-        activate_url = f"http://{current_site.domain}{reverse('accounts:password_reset_confirm', kwargs={'token': token})}"
-        
-        # Email content
-        subject = 'Reset your Password'
-        message = f'Hi {self.first_name},\n\nClick on link to reset your password:\n\n{activate_url}'
-        html_message = f"""
-        <html>
-            <body>
-                <h2>Welcome to our platform, {self.first_name}!</h2>
-                <p>Reset your password by clicking the button below:</p>
-                <p>
-                    <a href="{activate_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 4px;">
-                        Reset Your Password
-                    </a>
-                </p>
-                <p>If you didn't ask for this, please ignore this email.</p>
-            </body>
-        </html>
-        """
-        user.email_user(
-            subject=subject,
-            message= message,
-            html_message=html_message,
-            from_email= settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[self.email],
-        )
+        try:
+            token = user.make_token()
+            current_site = get_current_site(request)
+            activate_url = f"http://{current_site.domain}{reverse('accounts:password_reset_confirm', kwargs={'token': token})}"
+            
+            # Email content
+            subject = 'Reset your Password'
+            message = f'Hi {user.first_name},\n\nClick on link to reset your password:\n\n{activate_url}'
+            html_message = f"""
+            <html>
+                <body>
+                    <h2>Welcome to our platform, {user.first_name}!</h2>
+                    <p>Reset your password by clicking the button below:</p>
+                    <p>
+                        <a href="{activate_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 4px;">
+                            Reset Your Password
+                        </a>
+                    </p>
+                    <p>If you didn't ask for this, please ignore this email.</p>
+                </body>
+            </html>
+            """
+            user.email_user(
+                subject=subject,
+                message= message,
+                html_message=html_message,
+                from_email= settings.DEFAULT_FROM_EMAIL,
+            )
+            logger.info(f'Sent reset password email to {user.email}')
+        except Exception as e:
+            logger.error(f'Error sending reset password email to {user.email}: {str(e)}')
         return user
 
 
 class UserPasswordResetConfirmSerializer(serializers.Serializer):
-    token = serializers.CharField(max_length=100, write_only=True)
+    token = serializers.CharField(max_length=100, write_only=True, required=False)
     new_password = serializers.CharField(max_length=128, write_only=True)
 
     def validate(self, data):
@@ -171,33 +212,12 @@ class UserPasswordResetConfirmSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'A new password is required to reset password.'
             )
-        user = CustomUser.objects.filter(activation_token=token).first()
+        user = CustomUser.objects.filter(token=token).first()
         if user is None:
             raise serializers.ValidationError(
                 'A user with this token was not found.'
             )
         user.set_password(new_password)
         user.token = None
-        user.save()
-        return user
-
-
-class UserActivateSerializer(serializers.Serializer):
-    token = serializers.CharField(max_length=100, write_only=True)
-
-    def validate(self, data):
-        token = data.get('token', None)
-
-        if token is None:
-            raise serializers.ValidationError(
-                'A token is required to activate account.'
-            )
-        user = CustomUser.objects.filter(activation_token=token).first()
-        if user is None:
-            raise serializers.ValidationError(
-                'A user with this token was not found.'
-            )
-        user.is_active = True
-        user.activation_token = None
         user.save()
         return user
