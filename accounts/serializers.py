@@ -1,4 +1,3 @@
-from django.conf import settings
 from django.urls import reverse
 from rest_framework import serializers
 from .models import CustomUser
@@ -6,6 +5,7 @@ from django.contrib.sites.shortcuts import get_current_site
 from rest_framework_simplejwt.tokens import RefreshToken
 import logging
 from django.conf import settings
+from .tasks import send_token_to_email
 
 logger = logging.getLogger(__name__)
 
@@ -162,37 +162,33 @@ class UserPasswordResetSerializer(serializers.Serializer):
             raise serializers.ValidationError(
                 'A user with this email was not found.'
             )
-        try:
-            token = user.make_token()
-            current_site = get_current_site(request)
-            activate_url = f"http://{current_site.domain}{reverse('accounts:password_reset_confirm', kwargs={'token': token})}"
-            
-            # Email content
-            subject = 'Reset your Password'
-            message = f'Hi {user.first_name},\n\nClick on link to reset your password:\n\n{activate_url}'
-            html_message = f"""
-            <html>
-                <body>
-                    <h2>Welcome to our platform, {user.first_name}!</h2>
-                    <p>Reset your password by clicking the button below:</p>
-                    <p>
-                        <a href="{activate_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 4px;">
-                            Reset Your Password
-                        </a>
-                    </p>
-                    <p>If you didn't ask for this, please ignore this email.</p>
-                </body>
-            </html>
-            """
-            user.email_user(
-                subject=subject,
-                message= message,
-                html_message=html_message,
-                from_email= settings.DEFAULT_FROM_EMAIL,
+        token = user.make_token()
+        current_site = get_current_site(request)
+        activate_url = f"http://{current_site.domain}{reverse('accounts:password_reset_confirm', kwargs={'token': token})}"
+        
+        # Email content
+        subject = 'Reset your Password'
+        message = f'Hi {user.first_name},\n\nClick on link to reset your password:\n\n{activate_url}'
+        html_message = f"""
+        <html>
+            <body>
+                <h2>Welcome to our platform, {user.first_name}!</h2>
+                <p>Reset your password by clicking the button below:</p>
+                <p>
+                    <a href="{activate_url}" style="background-color: #4CAF50; color: white; padding: 10px 20px; text-align: center; text-decoration: none; display: inline-block; border-radius: 4px;">
+                        Reset Your Password
+                    </a>
+                </p>
+                <p>If you didn't ask for this, please ignore this email.</p>
+            </body>
+        </html>
+        """
+        send_token_to_email.delay(
+            email=email,
+            subject=subject,
+            message= message,
+            html_message=html_message
             )
-            logger.info(f'Sent reset password email to {user.email}')
-        except Exception as e:
-            logger.error(f'Error sending reset password email to {user.email}: {str(e)}')
         return user
 
 

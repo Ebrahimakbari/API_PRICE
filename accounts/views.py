@@ -4,7 +4,7 @@ from rest_framework import permissions
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 
-from accounts.models import CustomUser
+from .models import CustomUser
 from .serializers import (
     UserRegisterSerializer,
     UserLoginSerializer,
