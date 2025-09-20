@@ -1,5 +1,5 @@
 # Use the official stable Nginx image from Docker Hub
-FROM nginx:stable-alpine
+FROM nginx:1
 
 # Remove the default Nginx configuration file
 RUN rm /etc/nginx/conf.d/default.conf

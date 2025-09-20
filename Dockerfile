@@ -1,6 +1,6 @@
 # --- Stage 1: Builder ---
 # This stage installs dependencies into a temporary location.
-FROM python:3.10-slim-bullseye AS builder
+FROM python:3.12-slim AS builder
 
 # Set environment variables for a clean build
 ENV PIP_NO_CACHE_DIR=off \
@@ -28,7 +28,7 @@ RUN pip install -r requirements.txt
 
 # --- Stage 2: Final Image ---
 # This stage builds the final, lean image for production.
-FROM python:3.10-slim-bullseye
+FROM python:3.12-slim
 
 # Set the working directory
 WORKDIR /app
