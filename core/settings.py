@@ -26,7 +26,7 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -141,6 +141,8 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATICFILES_DIRS = [BASE_DIR/'static']
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
 
 MEDIA_URL = 'media/'
 MEDIA_ROOT = BASE_DIR/'media'
@@ -184,40 +186,56 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 
 # Logging
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     'formatters': {
+#         'verbose': {
+#             'format': '{levelname} {asctime} {module} {message}',
+#             'style': '{',
+#         },
+#         'simple': {
+#             'format': '{levelname} {message}',
+#             'style': '{',
+#         }
+#     },
+#     'handlers': {
+#         'console': {
+#             'level': 'INFO',
+#             'class': 'logging.StreamHandler',
+#             'formatter': 'simple',
+#         },
+#         'file': {
+#             'level': 'INFO',
+#             'class': 'logging.handlers.RotatingFileHandler',
+#             'filename': 'django.log',
+#             'maxBytes': 1024 * 1024 * 5,  # 5 MB
+#             'backupCount': 5,
+#             'formatter': 'verbose',
+#         },
+#     },
+#     'loggers': {
+#         'django': {
+#             'handlers': ['console', 'file'],  # Now using both handlers
+#             'level': 'INFO',
+#             'propagate': True,
+#         },
+#     },
+# }
+
+#Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
-        },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        }
-    },
+    # Configure a handler that prints to the console (stdout)
     'handlers': {
         'console': {
-            'level': 'INFO',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
-        },
-        'file': {
-            'level': 'INFO',
-            'class': 'logging.handlers.RotatingFileHandler',
-            'filename': 'django.log',
-            'maxBytes': 1024 * 1024 * 5,  # 5 MB
-            'backupCount': 5,
-            'formatter': 'verbose',
         },
     },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],  # Now using both handlers
-            'level': 'INFO',
-            'propagate': True,
-        },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO', # You can set this to 'DEBUG' for more verbose output
     },
 }
 
