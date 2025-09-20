@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+from celery.schedules import crontab
 import datetime
 from pathlib import Path
 from decouple import config
@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
     'drf_spectacular',
+    'django_celery_beat',
 ]
 
 MIDDLEWARE = [
@@ -92,11 +93,11 @@ WSGI_APPLICATION = 'core.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DB_NAME'),
-        'USER': config('DB_USER'),
-        'PASSWORD': config('DB_PASSWORD'),
-        'HOST': config('DB_HOST'),
-        'PORT': config('DB_PORT'),
+        'NAME': config('POSTGRES_DB'),
+        'USER': config('POSTGRES_USER'),
+        'PASSWORD': config('POSTGRES_PASSWORD'),
+        'HOST': config('POSTGRES_HOST'),
+        'PORT': config('POSTGRES_PORT'),
     }
 }
 
@@ -236,4 +237,18 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'A public API to track the daily prices of cars and motorcycles and ...',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+}
+
+
+#Celery Beat Configs
+CELERY_BEAT_SCHEDULE = {
+    'scrape-car-prices-every-day': {
+        'task': 'cars.tasks.scrape_car_prices',
+        # Run the task every day at 2:30 AM.
+        'schedule': crontab(hour=2, minute=30),
+    },
+    'scrape-motorcycle-prices-every-day': {
+        'task': 'motorcycles.tasks.scrape_motorcycle_prices',
+        'schedule': crontab(hour=3, minute=0),
+    },
 }

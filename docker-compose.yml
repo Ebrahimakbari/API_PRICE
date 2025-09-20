@@ -1,0 +1,76 @@
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+      - "443:443" # Add port 443 for future HTTPS
+    depends_on:
+      - app
+
+  # Django App Service
+  app:
+    build: .
+    container_name: django_app
+    command: gunicorn config.wsgi:application --bind 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    env_file: .env
+
+  # PostgreSQL Database Service
+  db:
+    image: postgres:14-alpine
+    container_name: postgres_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file: .env
+    ports:
+      - "5432:5432"
+
+  # Redis Service
+  redis:
+    image: redis:7-alpine
+    container_name: redis_cache
+
+  # Celery Worker Service
+  celery_worker:
+    build: .
+    container_name: celery_worker
+    command: celery -A config worker -l info
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - app
+    env_file: .env
+
+  # Celery Beat Scheduler Service
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: celery -A config beat -l info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+      - app
+    env_file: .env
+  
+  # Flower Monitoring Service
+  flower:
+    build: .
+    container_name: flower_monitor
+    command: celery -A config flower
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+      - app
+    env_file: .env
+
+volumes:
+  postgres_data:
