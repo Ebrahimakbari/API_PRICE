@@ -6,61 +6,55 @@ from django.utils import timezone
 
 
 class Brand(models.Model):
-    """
-    Stores brand names to avoid redundancy.
-    e.g., Peugeot, Saipa, Iran Khodro
-    """
-    name = models.CharField(max_length=100, unique=True, verbose_name="Brand Name")
+    """Stores car brand names in both Persian and English."""
+    name_fa = models.CharField("Persian Name", max_length=100, unique=True)
+    name_en = models.CharField("English Name", max_length=100, unique=True, null=True, blank=True)
 
     class Meta:
-        verbose_name = "Brand"
-        verbose_name_plural = "Brands"
+        verbose_name = "Car Brand"
+        verbose_name_plural = "Car Brands"
 
     def __str__(self):
-        return self.name
+        return f"{self.name_fa} ({self.name_en})" if self.name_en else self.name_fa
 
 
 class Vehicle(models.Model):
-    """
-    Stores the unique and static specifications of a vehicle variant.
-    The combination of all fields here defines one specific type of car.
-    """
+    """Stores the unique specifications of a car variant in both languages."""
     brand = models.ForeignKey(Brand, on_delete=models.CASCADE, related_name="vehicles", verbose_name="Brand")
-    name = models.CharField(max_length=100, verbose_name="Vehicle Name")  # e.g., Pars, 207
-    trim = models.CharField(max_length=100, verbose_name="Trim")  # e.g., LX-Tu5, Custom ELX
-    production_year = models.PositiveSmallIntegerField(verbose_name="Production Year") # e.g., 2023
-    specifications = models.CharField(max_length=255, verbose_name="Specifications", blank=True, help_text="e.g., Base, Full Option")
+    model_fa = models.CharField("Persian Model", max_length=100) # e.g., پارس
+    model_en = models.CharField("English Model", max_length=100, null=True, blank=True) # e.g., Pars
+    trim_fa = models.CharField("Persian Trim", max_length=100) # e.g., LX-Tu5
+    trim_en = models.CharField("English Trim", max_length=100, null=True, blank=True) # e.g., LX-Tu5
+    production_year = models.PositiveSmallIntegerField("Production Year")
+    specifications_fa = models.CharField("Persian Specifications", max_length=255, blank=True) # e.g., بدون آپشن
+    specifications_en = models.CharField("English Specifications", max_length=255, blank=True, null=True)
 
     class Meta:
         verbose_name = "Vehicle"
         verbose_name_plural = "Vehicles"
-        # This constraint ensures you never save a duplicate vehicle variant.
         constraints = [
             models.UniqueConstraint(
-                fields=['brand', 'name', 'trim', 'production_year', 'specifications'], 
-                name='unique_vehicle_variant'
+                fields=['brand', 'model_fa', 'trim_fa', 'production_year', 'specifications_fa'], 
+                name='unique_car_variant_fa'
             )
         ]
 
     def __str__(self):
-        return f"{self.brand.name} {self.name} - {self.trim} ({self.production_year})"
+        return f"{self.brand.name_fa} {self.model_fa} - {self.trim_fa} ({self.production_year})"
 
 
 class PriceLog(models.Model):
-    """
-    Records the price of a specific vehicle on a given date.
-    This is the core of your price history system.
-    """
+    """Records the price of a specific vehicle on a given date. (No changes here)"""
     vehicle = models.ForeignKey(Vehicle, on_delete=models.CASCADE, related_name="price_logs", verbose_name="Vehicle")
-    price = models.PositiveBigIntegerField(verbose_name="Price")
+    price = models.PositiveBigIntegerField("Price")
     log_date = models.DateField(default=timezone.now, verbose_name="Log Date")
 
     class Meta:
-        verbose_name = "Price Log"
-        verbose_name_plural = "Price Logs"
+        verbose_name = "Car Price Log"
+        verbose_name_plural = "Car Price Logs"
         ordering = ['-log_date']
         constraints = [
-            models.UniqueConstraint(fields=['vehicle', 'log_date'], name='price_log_per_day')
+            models.UniqueConstraint(fields=['vehicle', 'log_date'], name='car_price_log_per_day')
         ]
         
     def __str__(self):
