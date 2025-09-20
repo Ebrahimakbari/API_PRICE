@@ -1,9 +1,8 @@
 import requests
-from decouple import config
 from celery import shared_task
 from django.utils import timezone
 from fake_useragent import UserAgent
-
+from decouple import config
 from .models import MotorcycleBrand, Motorcycle, MotorcyclePriceLog
 
 ua = UserAgent()
@@ -15,8 +14,8 @@ BASE_API_URL_MOTOR = config('BASE_API_URL_MOTOR')
 @shared_task
 def scrape_motorcycle_prices():
     """
-    Scrapes motorcycle data from the Bama API, iterates through all pages,
-    and saves the data to the new motorcycle models.
+    Scrapes motorcycle data from the Bama API, using the updated model structure
+    with both Persian and English fields.
     """
     HEADERS = {
         'User-Agent': ua.random,
@@ -28,11 +27,7 @@ def scrape_motorcycle_prices():
     processed_count = 0
     
     while True:
-        # Bama API uses pageIndex and pageSize for pagination
-        params = {
-            'pageIndex': page_index,
-            'pageSize': 3 
-        }
+        params = {'pageIndex': page_index, 'pageSize': 3}
         
         print(f"Fetching Bama motorcycle data, page {page_index}...")
         try:
@@ -43,43 +38,46 @@ def scrape_motorcycle_prices():
             print(f"Error fetching Bama API: {e}")
             break
 
-        # The main data is in the 'data' key
         brand_groups = response_data.get('data', [])
-
-        # If the 'data' list is empty, it means we've reached the last page
         if not brand_groups:
             print("No more data found. Ending scrape.")
             break
 
-        for brand_group in brand_groups:
-            for item in brand_group.get('items', []):
-                brand_fa = item.get('brand_fa')
-                model_fa = item.get('model_fa')
-                price = item.get('price')
+        for item in [i for brand in brand_groups for i in brand.get('items', [])]:
+            brand_fa = item.get('brand_fa')
+            brand_en = item.get('brand') # The english slug from API
+            model_fa = item.get('model_fa')
+            model_en = item.get('model') # The english slug from API
+            price = item.get('price')
 
-                # Skip if essential data is missing
-                if not all([brand_fa, model_fa, price]):
-                    continue
+            if not all([brand_fa, model_fa, price]):
+                continue
+            
+            # Use 'defaults' to add English name only when creating a new brand
+            brand_obj, _ = MotorcycleBrand.objects.get_or_create(
+                name_fa=(brand_fa or '').strip(),
+                defaults={'name_en_slug': (brand_en or '').strip()}
+            )
+            
+            motorcycle_obj, _ = Motorcycle.objects.get_or_create(
+                brand=brand_obj,
+                model_fa=(model_fa or '').strip(),
+                trim_fa=(item.get('class') or '').strip() or None,
+                production_year=item.get('model_year'),
+                # Use defaults to add English model slug and origin on creation
+                defaults={
+                    'model_en_slug': (model_en or '').strip(),
+                    'origin': (item.get('manufacture_type', {}).get('display_name') or '').strip()
+                }
+            )
 
-                brand_obj, _ = MotorcycleBrand.objects.get_or_create(name=brand_fa.strip())
-                
-                motorcycle_obj, _ = Motorcycle.objects.get_or_create(
-                    brand=brand_obj,
-                    model=(model_fa or '').strip(),
-                    trim=(item.get('class') or '').strip() or None,
-                    production_year=item.get('model_year'),
-                    defaults={
-                        'origin': (item.get('manufacture_type', {}).get('display_name') or '').strip()
-                    }
-                )
-
-                MotorcyclePriceLog.objects.get_or_create(
-                    motorcycle=motorcycle_obj,
-                    log_date=timezone.now().date(),
-                    source=item.get('price_provider', 'Unknown').strip(),
-                    defaults={'price': price}
-                )
-                processed_count += 1
+            MotorcyclePriceLog.objects.get_or_create(
+                motorcycle=motorcycle_obj,
+                log_date=timezone.now().date(),
+                source=(item.get('price_provider') or 'Unknown').strip(),
+                defaults={'price': price}
+            )
+            processed_count += 1
 
         page_index += 1
 
