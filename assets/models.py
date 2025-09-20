@@ -1,5 +1,8 @@
 from django.db import models
 
+
+
+
 class Asset(models.Model):
     """
     Represents a financial asset that can be tracked.
@@ -21,6 +24,7 @@ class Asset(models.Model):
 
     def __str__(self):
         return self.name_fa or self.symbol
+
 
 class AssetPriceLog(models.Model):
     """

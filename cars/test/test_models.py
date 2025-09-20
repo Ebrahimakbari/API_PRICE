@@ -4,6 +4,7 @@ from cars.models import Brand, Vehicle
 
 
 
+
 class BrandModelTest(TestCase):
     """Test suite for the Brand model."""
 
@@ -14,7 +15,6 @@ class BrandModelTest(TestCase):
         """Test that a Brand can be created."""
         self.assertIsInstance(self.brand, Brand)
         self.assertEqual(self.brand.__str__(), "ایران خودرو (Iran Khodro)")
-
 
 class VehicleModelTest(TestCase):
     """Test suite for the Vehicle model."""

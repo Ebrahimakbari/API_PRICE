@@ -24,12 +24,11 @@ urlpatterns = [
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('api/v1/', include('cars.urls')), 
     path('api/v1/', include('motorcycles.urls')), 
+    path('api/v1/', include('assets.urls')), 
 
-    # --- API Schema & Documentation ---
     # Serves the OpenAPI schema file
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     
-    # Optional UI:
     # Serves the interactive Swagger UI documentation
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     
