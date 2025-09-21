@@ -79,3 +79,19 @@ class AssetDetailAPIView(APIView):
         asset = self.get_object(pk)
         asset.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class MonitoredAssetListView(APIView):
+    """
+    A read-only endpoint that returns a curated list of "exclusive" assets
+    marked for monitoring.
+    """
+    serializer_class = AssetSerializer 
+    permission_classes = [IsAdminOrReadOnly]
+
+
+    def get(self, request, format=None):
+        monitored_assets = Asset.objects.filter(is_monitored=True).prefetch_related('price_logs')
+        
+        serializer = self.serializer_class(monitored_assets, many=True)
+        return Response(serializer.data)

@@ -3,9 +3,10 @@ from .models import Asset, AssetPriceLog
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
-    list_display = ('symbol', 'name_en', 'name_fa', 'category')
-    list_filter = ('category',)
+    list_display = ('symbol', 'name_en', 'name_fa', 'category', 'is_monitored')
+    list_filter = ('category', 'is_monitored')
     search_fields = ('symbol', 'name_en', 'name_fa')
+    list_editable = ('is_monitored',)
     ordering = ('symbol',)
 
 @admin.register(AssetPriceLog)

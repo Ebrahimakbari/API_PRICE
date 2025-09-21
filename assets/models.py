@@ -9,9 +9,13 @@ class Asset(models.Model):
     Updated to store both Persian and English names.
     """
     CATEGORY_CHOICES = [
-        ('METAL', 'Precious Metals'),
-        ('CURRENCY', 'Currencies'),
-        ('CRYPTO', 'Cryptocurrencies'),
+        ('COIN', 'Iranian Coins'),
+        ('CURRENCY_IRR', 'Currency in IRR'),
+        ('CURRENCY_FX', 'Forex Rates'),
+        ('CRYPTO_IRR', 'Crypto in IRR'),
+        ('CRYPTO_USD', 'Crypto in USD'),
+        ('GOLD', 'Gold Variants'),
+        ('METAL', 'Industrial & Precious Metals'),
         ('COMMODITY', 'Commodities'),
         ('INDEX', 'Stock Market Indices'),
         ('OTHER', 'Other'),
@@ -20,7 +24,8 @@ class Asset(models.Model):
     symbol = models.CharField(max_length=100, unique=True, primary_key=True)
     name_fa = models.CharField(max_length=100, blank=True)
     name_en = models.CharField(max_length=100, blank=True)
-    category = models.CharField(max_length=10, choices=CATEGORY_CHOICES, default='OTHER')
+    category = models.CharField(max_length=20, choices=CATEGORY_CHOICES, default='OTHER')
+    is_monitored = models.BooleanField(default=False)
 
     def __str__(self):
         return self.name_fa or self.symbol
