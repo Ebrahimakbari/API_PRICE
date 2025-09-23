@@ -18,6 +18,7 @@ class Asset(models.Model):
         ('METAL', 'Industrial & Precious Metals'),
         ('COMMODITY', 'Commodities'),
         ('INDEX', 'Stock Market Indices'),
+        ('DERIVATIVES', 'Futures & Options'),
         ('OTHER', 'Other'),
     ]
     # The unique key from the API, e.g., "silver", "price_dollar_rl"

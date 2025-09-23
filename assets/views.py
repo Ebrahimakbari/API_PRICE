@@ -3,9 +3,10 @@ from django.db.models import Q
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from django.utils.dateparse import parse_date
 
 from .models import Asset
-from .serializers import AssetSerializer, AssetWriteSerializer
+from .serializers import AssetPriceLogSerializer, AssetSerializer, AssetWriteSerializer
 from permissions import IsAdminOrReadOnly
 
 
@@ -94,4 +95,40 @@ class MonitoredAssetListView(APIView):
         monitored_assets = Asset.objects.filter(is_monitored=True).prefetch_related('price_logs')
         
         serializer = self.serializer_class(monitored_assets, many=True)
+        return Response(serializer.data)
+
+
+class AssetHistoryAPIView(APIView):
+    """
+    A read-only endpoint to get the price history for a single asset.
+    """
+    permission_classes = [IsAdminOrReadOnly]
+    serializer_class = AssetPriceLogSerializer
+
+    def get(self, request, pk, format=None):
+        try:
+            asset = Asset.objects.get(pk=pk)
+        except Asset.DoesNotExist:
+            return Response({"error": "Asset not found"}, status=status.HTTP_404_NOT_FOUND)
+
+        # Get the date range from the URL query parameters
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        # Start with all price logs for this asset
+        price_logs = asset.price_logs.all()
+
+        # Filter by start date if provided
+        if start_date_str:
+            start_date = parse_date(start_date_str)
+            if start_date:
+                price_logs = price_logs.filter(timestamp__date__gte=start_date)
+
+        # Filter by end date if provided
+        if end_date_str:
+            end_date = parse_date(end_date_str)
+            if end_date:
+                price_logs = price_logs.filter(timestamp__date__lte=end_date)
+        
+        serializer = self.serializer_class(price_logs, many=True)
         return Response(serializer.data)

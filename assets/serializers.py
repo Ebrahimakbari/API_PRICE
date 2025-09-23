@@ -42,3 +42,14 @@ class AssetWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = Asset
         fields = ['symbol', 'name_fa', 'name_en', 'category']
+
+
+class AssetPriceLogSerializer(serializers.ModelSerializer):
+    """
+    Serializer for a single record of price history.
+    """
+    class Meta:
+        model = AssetPriceLog
+        # These fields are perfect for a chart
+        fields = ['price', 'high', 'low', 'timestamp']
+        read_only_fields = fields
