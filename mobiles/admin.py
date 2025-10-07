@@ -24,7 +24,7 @@ class VariantInline(admin.TabularInline):
     model = Variant
     extra = 0
     fields = ('api_id', 'seller_name', 'color_preview', 'color_name', 'color_hex',
-              'warranty_name', 'selling_price', 'rrp_price', 'order_limit', 'is_incredible')
+              'warranty_name', 'selling_price', 'rrp_price')
     readonly_fields = ('api_id', 'color_preview')
     
     def color_preview(self, obj):
@@ -131,9 +131,9 @@ class MobileAdmin(admin.ModelAdmin):
 @admin.register(Variant)
 class VariantAdmin(admin.ModelAdmin):
     list_display = ('mobile', 'seller_name', 'color_preview', 'color_name', 
-                   'warranty_name', 'selling_price', 'rrp_price', 'is_incredible')
+                   'warranty_name', 'selling_price', 'rrp_price')
     search_fields = ('mobile__title_en', 'mobile__title_fa', 'seller_name', 'color_name')
-    list_filter = ('is_incredible', 'warranty_name')
+    list_filter = ('warranty_name',)
     ordering = ('-selling_price',)
     readonly_fields = ('api_id',)
 

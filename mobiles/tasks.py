@@ -1,7 +1,6 @@
 import requests
 from celery import shared_task
 from django.db import transaction, IntegrityError
-from django.utils import timezone
 import logging
 from decouple import config
 from fake_useragent import UserAgent
@@ -47,7 +46,7 @@ def fetch_and_save_mobile_details(self, product_id):
         with transaction.atomic():
             brand, _ = Brand.objects.update_or_create(
                 api_id=brand_data['id'],
-                defaults={'code': brand_data.get('code', ''), 'title_fa': brand_data.get('title_fa', ''), 'title_en': brand_data.get('title_en', '')}
+                defaults={'code': brand_data.get('code', ''), 'title_fa': brand_data.get('title_fa', ''), 'title_en': brand_data.get('title_en', ''), 'logo_url': brand_data.get('logo', {}).get('url', '')}
             )
             category, _ = Category.objects.update_or_create(
                 api_id=category_data['id'],
@@ -91,15 +90,14 @@ def fetch_and_save_mobile_details(self, product_id):
                 
                 price_info = variant_data.get('price', {})
                 variants_to_create.append(Variant(
-                    api_id=variant_id, mobile=mobile,
+                    api_id=variant_id,
+                    mobile=mobile,
                     seller_name=variant_data.get('seller', {}).get('title', ''),
                     color_name=variant_data.get('color', {}).get('title', ''),
                     color_hex=variant_data.get('color', {}).get('hex_code', ''),
                     warranty_name=variant_data.get('warranty', {}).get('title_fa', ''),
                     selling_price=price_info.get('selling_price', 0) // 10,
                     rrp_price=price_info.get('rrp_price', 0) // 10,
-                    order_limit=price_info.get('order_limit', 1),
-                    is_incredible=price_info.get('is_incredible', False)
                 ))
             if variants_to_create:
                 Variant.objects.bulk_create(variants_to_create)

@@ -187,58 +187,58 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL')
 
 
 # Logging
-# LOGGING = {
-#     'version': 1,
-#     'disable_existing_loggers': False,
-#     'formatters': {
-#         'verbose': {
-#             'format': '{levelname} {asctime} {module} {message}',
-#             'style': '{',
-#         },
-#         'simple': {
-#             'format': '{levelname} {message}',
-#             'style': '{',
-#         }
-#     },
-#     'handlers': {
-#         'console': {
-#             'level': 'INFO',
-#             'class': 'logging.StreamHandler',
-#             'formatter': 'simple',
-#         },
-#         'file': {
-#             'level': 'INFO',
-#             'class': 'logging.handlers.RotatingFileHandler',
-#             'filename': 'django.log',
-#             'maxBytes': 1024 * 1024 * 5,  # 5 MB
-#             'backupCount': 5,
-#             'formatter': 'verbose',
-#         },
-#     },
-#     'loggers': {
-#         'django': {
-#             'handlers': ['console', 'file'],  # Now using both handlers
-#             'level': 'INFO',
-#             'propagate': True,
-#         },
-#     },
-# }
-
-#Logging
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    # Configure a handler that prints to the console (stdout)
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        }
+    },
     'handlers': {
         'console': {
+            'level': 'INFO',
             'class': 'logging.StreamHandler',
+            'formatter': 'simple',
+        },
+        'file': {
+            'level': 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': 'django.log',
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
         },
     },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO', # You can set this to 'DEBUG' for more verbose output
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],  # Now using both handlers
+            'level': 'INFO',
+            'propagate': True,
+        },
     },
 }
+
+#Logging
+# LOGGING = {
+#     'version': 1,
+#     'disable_existing_loggers': False,
+#     # Configure a handler that prints to the console (stdout)
+#     'handlers': {
+#         'console': {
+#             'class': 'logging.StreamHandler',
+#         },
+#     },
+#     'root': {
+#         'handlers': ['console'],
+#         'level': 'INFO', # You can set this to 'DEBUG' for more verbose output
+#     },
+# }
 
 
 # Celery Configuration

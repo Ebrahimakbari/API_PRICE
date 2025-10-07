@@ -79,8 +79,6 @@ class Variant(models.Model):
     
     selling_price = models.PositiveIntegerField(default=0)
     rrp_price = models.PositiveIntegerField(default=0)
-    order_limit = models.PositiveIntegerField(default=1)
-    is_incredible = models.BooleanField(default=False)
     
     class Meta:
         unique_together = ('mobile', 'api_id')
