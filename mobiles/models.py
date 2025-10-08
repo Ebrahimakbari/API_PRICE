@@ -4,6 +4,7 @@ import re
 
 
 def simple_slugify(text):
+    """ Generate a simple slug from a string. """
     if not text:
         return ''
     text = re.sub(r'[^\w\s-]', '', str(text)).strip().lower()
@@ -12,6 +13,7 @@ def simple_slugify(text):
 
 
 class Brand(models.Model):
+    """ Stores the brands from the API. """
     api_id = models.IntegerField(unique=True)
     code = models.CharField(max_length=100, unique=True, db_index=True)
     title_fa = models.CharField(max_length=255)
@@ -25,6 +27,7 @@ class Brand(models.Model):
 
 
 class Category(models.Model):
+    """ Stores the categories from the API. """
     api_id = models.IntegerField(unique=True)
     code = models.CharField(max_length=100, unique=True, db_index=True)
     title_fa = models.CharField(max_length=255)
@@ -37,6 +40,7 @@ class Category(models.Model):
     
     
 class Mobile(models.Model):
+    """ Stores the mobiles from the API. """
     api_id = models.PositiveIntegerField(unique=True, help_text="The unique product ID from the API")
     slug = models.SlugField(max_length=100, unique=True, blank=True, help_text="Auto-generated slug for clean URLs")
     title_fa = models.CharField(max_length=255)
@@ -118,6 +122,7 @@ class MobileSpecification(models.Model):
 
 
 class Variant(models.Model):
+    """ Stores the variants of a mobile. """
     api_id = models.PositiveIntegerField(unique=True)
     mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="variants")
     seller_name = models.CharField(max_length=255, blank=True)
@@ -132,6 +137,7 @@ class Variant(models.Model):
 
 
 class MobileImage(models.Model):
+    """ Stores the images of a mobile. """
     mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="images")
     image_url = models.URLField(max_length=500)
     is_main = models.BooleanField(default=False)

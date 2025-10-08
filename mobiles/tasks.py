@@ -8,6 +8,7 @@ from .models import Mobile, Brand, Category, MobileImage, Variant, ReviewAttribu
 
 
 
+
 LIST_API_URL_MOBILE = config('LIST_API_URL_MOBILE')
 DETAIL_API_URL_MOBILE = config('DETAIL_API_URL_MOBILE')
 logger = logging.getLogger(__name__)
@@ -152,6 +153,7 @@ def fetch_and_save_mobile_details(self, product_id):
 
 @shared_task
 def scrape_mobile_products(start_page=1, max_pages=5):
+    """Scrape mobile products from the API and save them to the database."""
     logger.info(f"Starting mobile product scrape from page {start_page} for {max_pages} pages.")
     processed_count = 0
     for page_num in range(start_page, start_page + max_pages):
