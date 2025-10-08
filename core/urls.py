@@ -25,6 +25,7 @@ urlpatterns = [
     path('api/v1/', include('cars.urls')), 
     path('api/v1/', include('motorcycles.urls')), 
     path('api/v1/', include('assets.urls')), 
+    path('api/v1/', include('mobiles.urls')), 
 
     # Serves the OpenAPI schema file
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
