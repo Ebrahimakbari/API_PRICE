@@ -6,7 +6,7 @@
 
 ## Description
 
-A public API to track the daily prices of cars, motorcycles, and financial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.
+A public API to track the daily prices of cars, motorcycles, mobiles and financial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.
 
 The entire application is containerized with Docker for easy setup, development, and deployment.
 
@@ -18,9 +18,13 @@ The entire application is containerized with Docker for easy setup, development,
 
 [Assets](https://call3.tgju.org/ajax.json)
 
+[Mobiles-List](https://api.digikala.com/v1/categories/mobile-phone/search/?page=1)
+
+[Mobiles-Detail](https://api.digikala.com/v2/product/19347047/)
+
 ## Features
 
-  * **RESTful API**: Provides endpoints for cars, motorcycles, and financial assets.
+  * **RESTful API**: Provides endpoints for cars, motorcycles, mobiles and financial assets.
   * **User Authentication**: Secure JWT-based authentication for user registration and login.
   * **Automated Data Scraping**: Celery workers and Celery Beat periodically fetch the latest price data from external sources.
   * **Containerized Environment**: Fully containerized with Docker and Docker Compose for consistent environments and easy deployment.
@@ -98,6 +102,8 @@ The base URL for the API is `/api/v1/`.
     BASE_API_URL_CAR=
     BASE_API_URL_MOTORCYCLE=
     BASE_API_URL_ASSETS=
+    LIST_API_URL_MOBILE=
+    DETAIL_API_URL_MOBILE=
 
     # Email (Optional, for future features)
     EMAIL_HOST_USER=your-email@gmail.com
