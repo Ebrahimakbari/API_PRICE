@@ -8,11 +8,21 @@ from .models import (
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
-    list_display = ('title_en', 'title_fa', 'code', 'created_at')
+    list_display = ('title_en', 'title_fa', 'code', 'created_at', 'image_preview')
     search_fields = ('title_en', 'title_fa', 'code')
     list_filter = ('created_at',)
     ordering = ('title_en',)
-    readonly_fields = ('api_id', 'created_at', 'updated_at')
+    readonly_fields = ('api_id', 'created_at', 'updated_at', 'image_preview')
+    
+    def image_preview(self, obj):
+        if obj.logo_url:
+            return format_html(
+                '<img src="{}" style="width: 45px; height: 45px; object-fit: cover;" />',
+                obj.logo_url
+            )
+        return "No Image"
+    image_preview.short_description = 'Image'
+
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):

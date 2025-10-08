@@ -46,7 +46,7 @@ def fetch_and_save_mobile_details(self, product_id):
         with transaction.atomic():
             brand, _ = Brand.objects.update_or_create(
                 api_id=brand_data['id'],
-                defaults={'code': brand_data.get('code', ''), 'title_fa': brand_data.get('title_fa', ''), 'title_en': brand_data.get('title_en', ''), 'logo_url': brand_data.get('logo', {}).get('url', '')}
+                defaults={'code': brand_data.get('code', ''), 'title_fa': brand_data.get('title_fa', ''), 'title_en': brand_data.get('title_en', ''), 'logo_url': brand_data.get('logo', {}).get('url', '')[0]}
             )
             category, _ = Category.objects.update_or_create(
                 api_id=category_data['id'],
