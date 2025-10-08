@@ -1,8 +1,10 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Prefetch
-import json
-from .models import Brand, Category, Mobile, Variant, MobileImage
+from .models import (
+    Brand, Category, Mobile, Variant, MobileImage,
+    ReviewAttribute, SpecGroup, SpecAttribute, MobileSpecification
+)
 
 @admin.register(Brand)
 class BrandAdmin(admin.ModelAdmin):
@@ -19,6 +21,17 @@ class CategoryAdmin(admin.ModelAdmin):
     list_filter = ('created_at',)
     ordering = ('title_fa',)
     readonly_fields = ('api_id', 'created_at', 'updated_at')
+
+class ReviewAttributeInline(admin.TabularInline):
+    model = ReviewAttribute
+    extra = 1
+    fields = ('title', 'value')
+
+class MobileSpecificationInline(admin.TabularInline):
+    model = MobileSpecification
+    extra = 1
+    fields = ('attribute', 'value')
+    raw_id_fields = ('attribute',)
 
 class VariantInline(admin.TabularInline):
     model = Variant
@@ -59,9 +72,8 @@ class MobileAdmin(admin.ModelAdmin):
     search_fields = ('title_en', 'title_fa', 'brand__title_en', 'brand__title_fa')
     list_filter = ('status', 'brand', 'category', 'created_at')
     ordering = ('-created_at',)
-    readonly_fields = ('api_id', 'slug', 'created_at', 'updated_at', 
-                      'formatted_review', 'formatted_specs')
-    inlines = [VariantInline, MobileImageInline] 
+    readonly_fields = ('api_id', 'slug', 'created_at', 'updated_at')
+    inlines = [VariantInline, MobileImageInline, ReviewAttributeInline, MobileSpecificationInline]
     
     fieldsets = (
         ('Basic Information', {
@@ -70,12 +82,8 @@ class MobileAdmin(admin.ModelAdmin):
         ('Rating', {
             'fields': ('rating_rate', 'rating_count')
         }),
-        ('Review Data', {
-            'fields': ('formatted_review',),
-            'classes': ('collapse',)
-        }),
-        ('Specifications', {
-            'fields': ('formatted_specs',),
+        ('Review', {
+            'fields': ('review_description',),
             'classes': ('collapse',)
         }),
         ('Timestamps', {
@@ -83,26 +91,6 @@ class MobileAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         })
     )
-
-    def formatted_review(self, obj):
-        if obj.review:
-            formatted_json = json.dumps(obj.review, indent=2, ensure_ascii=False)
-            return format_html(
-                '<pre style="white-space: pre-wrap; word-wrap: break-word;">{}</pre>',
-                formatted_json
-            )
-        return "No Review Data"
-    formatted_review.short_description = 'Review Details'
-
-    def formatted_specs(self, obj):
-        if obj.specifications:
-            formatted_json = json.dumps(obj.specifications, indent=2, ensure_ascii=False)
-            return format_html(
-                '<pre style="white-space: pre-wrap; word-wrap: break-word;">{}</pre>',
-                formatted_json
-            )
-        return "No Specification Data"
-    formatted_specs.short_description = 'Specifications'
 
     def main_image_preview(self, obj):
         main_image = obj.images.filter(is_main=True).first()
@@ -115,18 +103,14 @@ class MobileAdmin(admin.ModelAdmin):
     main_image_preview.short_description = 'Main Image'
 
     def get_queryset(self, request):
-        return super().get_queryset(request).select_related('brand', 'category').prefetch_related(
+        return super().get_queryset(request).select_related(
+            'brand', 'category'
+        ).prefetch_related(
             Prefetch('variants', queryset=Variant.objects.all().order_by('-selling_price')),
-            'images'
+            'images',
+            'review_attributes',
+            'specifications__attribute__group'
         )
-
-    def change_view(self, request, object_id, form_url='', extra_context=None):
-        extra_context = extra_context or {}
-        obj = self.get_object(request, object_id)
-        if obj:
-            extra_context['variants_count'] = obj.variants.count()
-            extra_context['images_count'] = obj.images.count()
-        return super().change_view(request, object_id, form_url, extra_context)
 
 @admin.register(Variant)
 class VariantAdmin(admin.ModelAdmin):
@@ -162,3 +146,35 @@ class MobileImageAdmin(admin.ModelAdmin):
             )
         return "No Image"
     image_preview.short_description = 'Image Preview'
+
+@admin.register(SpecGroup)
+class SpecGroupAdmin(admin.ModelAdmin):
+    list_display = ('title',)
+    search_fields = ('title',)
+    ordering = ('title',)
+
+@admin.register(SpecAttribute)
+class SpecAttributeAdmin(admin.ModelAdmin):
+    list_display = ('group', 'title')
+    search_fields = ('title', 'group__title')
+    list_filter = ('group',)
+    ordering = ('group', 'title')
+
+@admin.register(ReviewAttribute)
+class ReviewAttributeAdmin(admin.ModelAdmin):
+    list_display = ('mobile', 'title', 'value')
+    search_fields = ('mobile__title_en', 'mobile__title_fa', 'title')
+    list_filter = ('title',)
+    ordering = ('mobile', 'title')
+
+@admin.register(MobileSpecification)
+class MobileSpecificationAdmin(admin.ModelAdmin):
+    list_display = ('mobile', 'attribute', 'value_preview')
+    search_fields = ('mobile__title_en', 'mobile__title_fa', 'attribute__title')
+    list_filter = ('attribute__group', 'attribute')
+    ordering = ('mobile', 'attribute__group', 'attribute')
+    raw_id_fields = ('attribute',)
+
+    def value_preview(self, obj):
+        return obj.value[:50] + '...' if len(obj.value) > 50 else obj.value
+    value_preview.short_description = 'Value'

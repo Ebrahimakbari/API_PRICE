@@ -4,15 +4,13 @@ from django.db import transaction, IntegrityError
 import logging
 from decouple import config
 from fake_useragent import UserAgent
+from .models import Mobile, Brand, Category, MobileImage, Variant, ReviewAttribute, SpecGroup, SpecAttribute, MobileSpecification
 
-from .models import Mobile, Brand, Category, MobileImage, Variant
 
-# --- Configuration ---
+
 LIST_API_URL_MOBILE = config('LIST_API_URL_MOBILE')
 DETAIL_API_URL_MOBILE = config('DETAIL_API_URL_MOBILE')
 logger = logging.getLogger(__name__)
-
-# Use a session for performance
 ua = UserAgent()
 session = requests.Session()
 session.headers.update({
@@ -21,10 +19,11 @@ session.headers.update({
     'Referer': 'https://www.digikala.com/',
 })
 
+
 @shared_task(bind=True, max_retries=3, default_retry_delay=60, autoretry_for=(requests.exceptions.RequestException,))
 def fetch_and_save_mobile_details(self, product_id):
     """
-    Fetches and saves focused product information, leveraging bulk operations.
+    Fetches and saves focused product information, leveraging bulk operations and relational models.
     """
     url = DETAIL_API_URL_MOBILE.format(product_id=product_id)
     logger.info(f"Processing product ID: {product_id}")
@@ -53,6 +52,7 @@ def fetch_and_save_mobile_details(self, product_id):
                 defaults={'code': category_data.get('code', ''), 'title_fa': category_data.get('title_fa', ''), 'title_en': category_data.get('title_en', '')}
             )
 
+            review_data = product_data.get('review', {})
             mobile, created = Mobile.objects.update_or_create(
                 api_id=product_data['id'],
                 defaults={
@@ -63,13 +63,49 @@ def fetch_and_save_mobile_details(self, product_id):
                     'status': product_data.get('status', 'unavailable'),
                     'rating_rate': product_data.get('rating', {}).get('rate', 0),
                     'rating_count': product_data.get('rating', {}).get('count', 0),
-                    # Directly save the entire 'review' and 'specifications' JSON objects
-                    'review': product_data.get('review', {}),
-                    'specifications': product_data.get('specifications', [])
+                    'review_description': review_data.get('description', ''),
                 }
             )
 
-            # --- Bulk Create Images ---
+            ReviewAttribute.objects.filter(mobile=mobile).delete()
+            review_attrs_to_create = []
+            for attr in review_data.get('attributes', []):
+                # Join the list of values into a single string
+                value_str = ", ".join(attr.get('values', [])).strip()
+                if attr.get('title') and value_str:
+                    review_attrs_to_create.append(ReviewAttribute(
+                        mobile=mobile,
+                        title=attr['title'],
+                        value=value_str
+                    ))
+            if review_attrs_to_create:
+                ReviewAttribute.objects.bulk_create(review_attrs_to_create)
+
+            MobileSpecification.objects.filter(mobile=mobile).delete()
+            specs_to_create = []
+            for group_data in product_data.get('specifications', []):
+                if not (group_title := group_data.get('title')):
+                    continue
+                # Get or create the specification group (e.g., 'Display')
+                group, _ = SpecGroup.objects.get_or_create(title=group_title)
+
+                for attr_data in group_data.get('attributes', []):
+                    if not (attr_title := attr_data.get('title')):
+                        continue
+                    # Get or create the specific attribute (e.g., 'Resolution')
+                    attribute, _ = SpecAttribute.objects.get_or_create(group=group, title=attr_title)
+                    
+                    # Join multiple values into a clean, comma-separated string
+                    value_str = ", ".join(val.strip() for val in attr_data.get('values', []) if val and val.strip())
+                    if value_str:
+                        specs_to_create.append(MobileSpecification(
+                            mobile=mobile,
+                            attribute=attribute,
+                            value=value_str
+                        ))
+            if specs_to_create:
+                MobileSpecification.objects.bulk_create(specs_to_create)
+            
             MobileImage.objects.filter(mobile=mobile).delete()
             images_to_create = []
             main_image_url = product_data.get('images', {}).get('main', {}).get('url', [None])[0]
@@ -81,7 +117,7 @@ def fetch_and_save_mobile_details(self, product_id):
             if images_to_create:
                 MobileImage.objects.bulk_create(images_to_create)
 
-            # --- Bulk Create Variants ---
+
             Variant.objects.filter(mobile=mobile).delete()
             variants_to_create = []
             for variant_data in product_data.get('variants', []):
@@ -111,15 +147,11 @@ def fetch_and_save_mobile_details(self, product_id):
         return f"Failed {product_id}: IntegrityError"
     except Exception as e:
         logger.exception(f"CRITICAL UNEXPECTED ERROR for product ID {product_id}: {e}")
-        # Reraise to let Celery handle the retry logic
         raise self.retry(exc=e)
 
 
 @shared_task
-def scrape_mobile_products(start_page=1, max_pages=20):
-    """
-    Scrapes mobile products from the list API and queues detail tasks.
-    """
+def scrape_mobile_products(start_page=1, max_pages=5):
     logger.info(f"Starting mobile product scrape from page {start_page} for {max_pages} pages.")
     processed_count = 0
     for page_num in range(start_page, start_page + max_pages):

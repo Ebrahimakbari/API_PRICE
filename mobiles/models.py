@@ -1,13 +1,15 @@
 from django.db import models
-from django.db.models import JSONField
 import re
+
+
 
 def simple_slugify(text):
     if not text:
         return ''
     text = re.sub(r'[^\w\s-]', '', str(text)).strip().lower()
     text = re.sub(r'[-\s]+', '-', text)
-    return text[:80] # Increased slug length slightly
+    return text[:80]
+
 
 class Brand(models.Model):
     api_id = models.IntegerField(unique=True)
@@ -21,6 +23,7 @@ class Brand(models.Model):
     def __str__(self):
         return self.title_en or self.title_fa
 
+
 class Category(models.Model):
     api_id = models.IntegerField(unique=True)
     code = models.CharField(max_length=100, unique=True, db_index=True)
@@ -31,7 +34,8 @@ class Category(models.Model):
     
     def __str__(self):
         return self.title_fa
-
+    
+    
 class Mobile(models.Model):
     api_id = models.PositiveIntegerField(unique=True, help_text="The unique product ID from the API")
     slug = models.SlugField(max_length=100, unique=True, blank=True, help_text="Auto-generated slug for clean URLs")
@@ -46,9 +50,7 @@ class Mobile(models.Model):
     rating_rate = models.FloatField(default=0.0)
     rating_count = models.PositiveIntegerField(default=0)
     
-    # Store rich, nested JSON data directly
-    review = JSONField(default=dict, blank=True, help_text="Stores the 'review' object from the API")
-    specifications = JSONField(default=dict, blank=True, help_text="Stores the 'specifications' list from the API")
+    review_description = models.TextField(blank=True, null=True, help_text="Stores the 'description' from the review object")
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -68,20 +70,66 @@ class Mobile(models.Model):
             self.slug = simple_slugify(slug_text)
         super().save(*args, **kwargs)
 
+
+class ReviewAttribute(models.Model):
+    """ Stores the highlighted attributes from the 'review' section. """
+    mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="review_attributes")
+    title = models.CharField(max_length=255)
+    value = models.CharField(max_length=500) 
+
+    class Meta:
+        unique_together = ('mobile', 'title') 
+
+    def __str__(self):
+        return f"{self.title}: {self.value}"
+
+
+class SpecGroup(models.Model):
+    """ A group for specifications, e.g., 'Display', 'Processor'. """
+    title = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.title
+
+
+class SpecAttribute(models.Model):
+    """ A specific attribute within a group, e.g., 'Resolution', 'RAM'. """
+    group = models.ForeignKey(SpecGroup, on_delete=models.CASCADE, related_name="attributes")
+    title = models.CharField(max_length=100)
+
+    class Meta:
+        unique_together = ('group', 'title') 
+
+    def __str__(self):
+        return f"{self.group.title} - {self.title}"
+
+
+class MobileSpecification(models.Model):
+    """ Links a Mobile to a SpecAttribute and stores its specific value. """
+    mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="specifications")
+    attribute = models.ForeignKey(SpecAttribute, on_delete=models.PROTECT, related_name="mobile_values")
+    value = models.TextField() # Use TextField to accommodate multiple or long values
+
+    class Meta:
+        unique_together = ('mobile', 'attribute')
+
+    def __str__(self):
+        return f"{self.mobile.title_en} - {self.attribute.title}: {self.value[:50]}"
+
+
 class Variant(models.Model):
-    # Unique identifier from the API
     api_id = models.PositiveIntegerField(unique=True)
     mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="variants")
     seller_name = models.CharField(max_length=255, blank=True)
     color_name = models.CharField(max_length=100, blank=True)
     color_hex = models.CharField(max_length=7, blank=True)
     warranty_name = models.CharField(max_length=255, blank=True)
-    
     selling_price = models.PositiveIntegerField(default=0)
     rrp_price = models.PositiveIntegerField(default=0)
     
     class Meta:
         unique_together = ('mobile', 'api_id')
+
 
 class MobileImage(models.Model):
     mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="images")
