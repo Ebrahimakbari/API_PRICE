@@ -27,6 +27,14 @@ SCRAPE_CONFIG = {
     'console': {
         'list_url': config('LIST_API_URL_CONSOLE'),
         'detail_url': config('DETAIL_API_URL_CONSOLE'),
+    },
+    'headphone': {
+        'list_url': config('LIST_API_URL_HEADPHONE'),
+        'detail_url': config('DETAIL_API_URL_HEADPHONE'),
+    },
+    'gadget': {
+        'list_url': config('LIST_API_URL_GADGET'),
+        'detail_url': config('DETAIL_API_URL_GADGET'),
     }
 }
 
@@ -223,7 +231,7 @@ def fetch_and_save_product_details(product_id, product_type):
 
 
 @shared_task
-def scrape_products(product_type, start_page=1, max_pages=30):
+def scrape_products(product_type, start_page=1, max_pages=10):
     """Scrape products from the API and save them to the database."""
     logger.info(f"Starting product scrape from page {start_page} for {max_pages} pages.")
     processed_count = 0
