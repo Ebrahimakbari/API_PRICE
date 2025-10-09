@@ -6,7 +6,7 @@
 
 ## Description
 
-A public API to track the daily prices of cars, motorcycles, mobiles, Laptops and financial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.
+A public API to track the daily prices of cars, motorcycles, electronic-devices(like: mobiles, laptops, gadgets, ...) and financial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.ial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.
 
 The entire application is containerized with Docker for easy setup, development, and deployment.
 
@@ -20,13 +20,19 @@ The entire application is containerized with Docker for easy setup, development,
 
 [Mobiles-List](https://api.digikala.com/v1/categories/mobile-phone/search/?page=1)
 
+[Console-List](https://api.digikala.com/v1/categories/station-gaming-consoles/search/?page={page})
+
+[Gadget-List](https://api.digikala.com/v1/categories/wearable-gadget/search/?page={page})
+
+[HeadPhone-List](https://api.digikala.com/v1/categories/headphone/search/?page={page})
+
 [PC-List](https://api.digikala.com/v1/categories/notebook-netbook-ultrabook/search/?page=20184035)
 
-[Mobiles-Detail / PC-Detail](https://api.digikala.com/v2/product/19347047/)
+[Digital-devices-Detail](https://api.digikala.com/v2/product/19347047/)
 
 ## Features
 
-  * **RESTful API**: Provides endpoints for cars, motorcycles, mobiles, Laptops and financial assets.
+  * **RESTful API**: Provides endpoints for cars, motorcycles, digital-devices(like: mobiles, laptops, gadgets, ...) and financial assets.
   * **User Authentication**: Secure JWT-based authentication for user registration and login.
   * **Automated Data Scraping**: Celery workers and Celery Beat periodically fetch the latest price data from external sources.
   * **Containerized Environment**: Fully containerized with Docker and Docker Compose for consistent environments and easy deployment.
