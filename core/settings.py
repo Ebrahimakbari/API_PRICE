@@ -43,7 +43,7 @@ INSTALLED_APPS = [
     'accounts',
     'motorcycles',
     'assets',
-    'mobiles',
+    'products',
     #third-party-apps
     'rest_framework',
     'rest_framework_simplejwt.token_blacklist',
@@ -270,11 +270,14 @@ CELERY_BEAT_SCHEDULE = {
     'scrape-motorcycle-prices-every-day': {
         'task': 'motorcycles.tasks.scrape_motorcycle_prices',
         'schedule': crontab(hour=3, minute=5),
-        
     },
     # Run the asset scraper every 30 minutes, every day.
     'scrape-assets-prices-every-15-minutes': {
         'task': 'assets.tasks.scrape_assets_prices',
+        'schedule': crontab(minute='*/2'),
+    },
+    'scrape-mobile-prices-every-15-minutes': {
+        'task': 'mobiles.tasks.scrape_mobile_products',
         'schedule': crontab(minute='*/2'),
     },
 }

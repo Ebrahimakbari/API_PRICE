@@ -2,8 +2,8 @@ from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Prefetch
 from .models import (
-    Brand, Category, Mobile, Variant, MobileImage,
-    ReviewAttribute, SpecGroup, SpecAttribute, MobileSpecification
+    Brand, Category, Product, Variant, ProductImage,
+    ReviewAttribute, SpecGroup, SpecAttribute, ProductSpecification
 )
 
 @admin.register(Brand)
@@ -37,8 +37,8 @@ class ReviewAttributeInline(admin.TabularInline):
     extra = 1
     fields = ('title', 'value')
 
-class MobileSpecificationInline(admin.TabularInline):
-    model = MobileSpecification
+class ProductSpecificationInline(admin.TabularInline):
+    model = ProductSpecification
     extra = 1
     fields = ('attribute', 'value')
     raw_id_fields = ('attribute',)
@@ -60,8 +60,8 @@ class VariantInline(admin.TabularInline):
         return "No Color"
     color_preview.short_description = 'Color'
 
-class MobileImageInline(admin.TabularInline):
-    model = MobileImage
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
     extra = 0
     fields = ('image_preview', 'is_main')
     readonly_fields = ('image_preview',)
@@ -75,15 +75,15 @@ class MobileImageInline(admin.TabularInline):
         return "No Image"
     image_preview.short_description = 'Image'
 
-@admin.register(Mobile)
-class MobileAdmin(admin.ModelAdmin):
+@admin.register(Product)
+class ProductAdmin(admin.ModelAdmin):
     list_display = ('title_en', 'title_fa', 'brand', 'category', 'status', 
                    'rating_rate', 'rating_count', 'main_image_preview', 'created_at')
     search_fields = ('title_en', 'title_fa', 'brand__title_en', 'brand__title_fa')
     list_filter = ('status', 'brand', 'category', 'created_at')
     ordering = ('-created_at',)
     readonly_fields = ('api_id', 'slug', 'created_at', 'updated_at')
-    inlines = [VariantInline, MobileImageInline, ReviewAttributeInline, MobileSpecificationInline]
+    inlines = [VariantInline, ProductImageInline, ReviewAttributeInline, ProductSpecificationInline]
     
     fieldsets = (
         ('Basic Information', {
@@ -124,9 +124,9 @@ class MobileAdmin(admin.ModelAdmin):
 
 @admin.register(Variant)
 class VariantAdmin(admin.ModelAdmin):
-    list_display = ('mobile', 'seller_name', 'color_preview', 'color_name', 
+    list_display = ('product', 'seller_name', 'color_preview', 'color_name', 
                    'warranty_name', 'selling_price', 'rrp_price')
-    search_fields = ('mobile__title_en', 'mobile__title_fa', 'seller_name', 'color_name')
+    search_fields = ('product__title_en', 'product__title_fa', 'seller_name', 'color_name')
     list_filter = ('warranty_name',)
     ordering = ('-selling_price',)
     readonly_fields = ('api_id',)
@@ -141,10 +141,10 @@ class VariantAdmin(admin.ModelAdmin):
         return "No Color"
     color_preview.short_description = 'Color'
 
-@admin.register(MobileImage)
-class MobileImageAdmin(admin.ModelAdmin):
-    list_display = ('mobile', 'image_preview', 'is_main')
-    search_fields = ('mobile__title_en', 'mobile__title_fa')
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    list_display = ('product', 'image_preview', 'is_main')
+    search_fields = ('product__title_en', 'product__title_fa')
     list_filter = ('is_main',)
     ordering = ('-is_main',)
 
@@ -172,17 +172,17 @@ class SpecAttributeAdmin(admin.ModelAdmin):
 
 @admin.register(ReviewAttribute)
 class ReviewAttributeAdmin(admin.ModelAdmin):
-    list_display = ('mobile', 'title', 'value')
-    search_fields = ('mobile__title_en', 'mobile__title_fa', 'title')
+    list_display = ('product', 'title', 'value')
+    search_fields = ('product__title_en', 'product__title_fa', 'title')
     list_filter = ('title',)
-    ordering = ('mobile', 'title')
+    ordering = ('product', 'title')
 
-@admin.register(MobileSpecification)
-class MobileSpecificationAdmin(admin.ModelAdmin):
-    list_display = ('mobile', 'attribute', 'value_preview')
-    search_fields = ('mobile__title_en', 'mobile__title_fa', 'attribute__title')
+@admin.register(ProductSpecification)
+class ProductSpecificationAdmin(admin.ModelAdmin):
+    list_display = ('product', 'attribute', 'value_preview')
+    search_fields = ('product__title_en', 'product__title_fa', 'attribute__title')
     list_filter = ('attribute__group', 'attribute')
-    ordering = ('mobile', 'attribute__group', 'attribute')
+    ordering = ('product', 'attribute__group', 'attribute')
     raw_id_fields = ('attribute',)
 
     def value_preview(self, obj):

@@ -39,16 +39,16 @@ class Category(models.Model):
         return self.title_fa
     
     
-class Mobile(models.Model):
-    """ Stores the mobiles from the API. """
+class Product(models.Model):
+    """ Stores the Products from the API. """
     api_id = models.PositiveIntegerField(unique=True, help_text="The unique product ID from the API")
     slug = models.SlugField(max_length=100, unique=True, blank=True, help_text="Auto-generated slug for clean URLs")
     title_fa = models.CharField(max_length=255)
     title_en = models.CharField(max_length=255)
     status = models.CharField(max_length=50, default='marketable', db_index=True)
 
-    brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="mobiles")
-    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="mobiles")
+    brand = models.ForeignKey(Brand, on_delete=models.PROTECT, related_name="products")
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products")
 
     # Core product info
     rating_rate = models.FloatField(default=0.0)
@@ -77,12 +77,12 @@ class Mobile(models.Model):
 
 class ReviewAttribute(models.Model):
     """ Stores the highlighted attributes from the 'review' section. """
-    mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="review_attributes")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="review_attributes")
     title = models.CharField(max_length=255)
     value = models.CharField(max_length=500) 
 
     class Meta:
-        unique_together = ('mobile', 'title') 
+        unique_together = ('product', 'title') 
 
     def __str__(self):
         return f"{self.title}: {self.value}"
@@ -108,23 +108,23 @@ class SpecAttribute(models.Model):
         return f"{self.group.title} - {self.title}"
 
 
-class MobileSpecification(models.Model):
-    """ Links a Mobile to a SpecAttribute and stores its specific value. """
-    mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="specifications")
-    attribute = models.ForeignKey(SpecAttribute, on_delete=models.PROTECT, related_name="mobile_values")
+class ProductSpecification(models.Model):
+    """ Links a Product to a SpecAttribute and stores its specific value. """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="specifications")
+    attribute = models.ForeignKey(SpecAttribute, on_delete=models.PROTECT, related_name="product_values")
     value = models.TextField() # Use TextField to accommodate multiple or long values
 
     class Meta:
-        unique_together = ('mobile', 'attribute')
+        unique_together = ('product', 'attribute')
 
     def __str__(self):
-        return f"{self.mobile.title_en} - {self.attribute.title}: {self.value[:50]}"
+        return f"{self.product.title_en} - {self.attribute.title}: {self.value[:50]}"
 
 
 class Variant(models.Model):
-    """ Stores the variants of a mobile. """
+    """ Stores the variants of a Product. """
     api_id = models.PositiveIntegerField(unique=True)
-    mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="variants")
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="variants")
     seller_name = models.CharField(max_length=255, blank=True)
     color_name = models.CharField(max_length=100, blank=True)
     color_hex = models.CharField(max_length=7, blank=True)
@@ -133,14 +133,14 @@ class Variant(models.Model):
     rrp_price = models.PositiveIntegerField(default=0)
     
     class Meta:
-        unique_together = ('mobile', 'api_id')
+        unique_together = ('product', 'api_id')
 
 
-class MobileImage(models.Model):
-    """ Stores the images of a mobile. """
-    mobile = models.ForeignKey(Mobile, on_delete=models.CASCADE, related_name="images")
+class ProductImage(models.Model):
+    """ Stores the images of a Product. """
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="images")
     image_url = models.URLField(max_length=500)
     is_main = models.BooleanField(default=False)
     
     class Meta:
-        unique_together = ('mobile', 'image_url')
+        unique_together = ('product', 'image_url')

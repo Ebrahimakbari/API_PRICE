@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
-    Brand, Category, Mobile, ReviewAttribute, SpecGroup, SpecAttribute,
-    MobileSpecification, Variant, MobileImage
+    Brand, Category, Product, ReviewAttribute, SpecGroup, SpecAttribute,
+    ProductSpecification, Variant, ProductImage
 )
 
 
@@ -37,17 +37,17 @@ class SpecAttributeSerializer(serializers.ModelSerializer):
         fields = ['id', 'group', 'title']
 
 
-class MobileSpecificationSerializer(serializers.ModelSerializer):
+class ProductSpecificationSerializer(serializers.ModelSerializer):
     attribute = SpecAttributeSerializer(read_only=True)
 
     class Meta:
-        model = MobileSpecification
+        model = ProductSpecification
         fields = ['id', 'attribute', 'value']
 
 
-class MobileImageSerializer(serializers.ModelSerializer):
+class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
-        model = MobileImage
+        model = ProductImage
         fields = ['id', 'image_url', 'is_main']
 
 
@@ -57,12 +57,12 @@ class VariantSerializer(serializers.ModelSerializer):
         fields = ['id', 'api_id', 'seller_name', 'color_name', 'color_hex', 'warranty_name', 'selling_price', 'rrp_price']
 
 
-class MobileSerializer(serializers.ModelSerializer):
+class ProductSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
     review_attributes = ReviewAttributeSerializer(many=True, read_only=True)
-    specifications = MobileSpecificationSerializer(many=True, read_only=True)
-    images = MobileImageSerializer(many=True, read_only=True)
+    specifications = ProductSpecificationSerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
     variants = VariantSerializer(many=True, read_only=True)
     brand_id = serializers.PrimaryKeyRelatedField(
         queryset=Brand.objects.all(), source='brand', write_only=True
@@ -72,7 +72,7 @@ class MobileSerializer(serializers.ModelSerializer):
     )
 
     class Meta:
-        model = Mobile
+        model = Product
         fields = [
             'id', 'api_id', 'slug', 'title_fa', 'title_en', 'status', 'brand', 'category',
             'rating_rate', 'rating_count', 'review_description', 'review_attributes',
@@ -81,16 +81,16 @@ class MobileSerializer(serializers.ModelSerializer):
         ]
 
 
-class MobileListSerializer(serializers.ModelSerializer):
+class ProductListSerializer(serializers.ModelSerializer):
     brand = BrandSerializer(read_only=True)
     category = CategorySerializer(read_only=True)
     variants = VariantSerializer(many=True, read_only=True)
-    specifications = MobileSpecificationSerializer(many=True, read_only=True)
-    images = MobileImageSerializer(many=True, read_only=True)
+    specifications = ProductSpecificationSerializer(many=True, read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
     review_attributes = ReviewAttributeSerializer(many=True, read_only=True)
 
     class Meta:
-        model = Mobile
+        model = Product
         fields = [
             'id', 'api_id', 'slug', 'title_fa', 'title_en', 'status', 'brand', 'category','review_description',
             'rating_rate', 'rating_count', 'created_at', 'updated_at', 'variants', 'specifications', 'images',

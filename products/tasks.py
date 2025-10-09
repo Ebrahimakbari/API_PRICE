@@ -4,13 +4,28 @@ from django.db import transaction, IntegrityError
 import logging
 from decouple import config
 from fake_useragent import UserAgent
-from .models import Mobile, Brand, Category, MobileImage, Variant, ReviewAttribute, SpecGroup, SpecAttribute, MobileSpecification
+from .models import Product, Brand, Category, ProductImage, ProductSpecification, Variant, ReviewAttribute, SpecGroup, SpecAttribute
 
 
 
 
 LIST_API_URL_MOBILE = config('LIST_API_URL_MOBILE')
+LIST_API_URL_PC = config('LIST_API_URL_PC')
 DETAIL_API_URL_MOBILE = config('DETAIL_API_URL_MOBILE')
+DETAIL_API_URL_PC = config('DETAIL_API_URL_PC')
+
+
+SCRAPE_CONFIG = {
+    'mobile': {
+        'list_url': config('LIST_API_URL_MOBILE'),
+        'detail_url': config('DETAIL_API_URL_MOBILE'),
+    },
+    'pc': {
+        'list_url': config('LIST_API_URL_PC'),
+        'detail_url': config('DETAIL_API_URL_PC'),
+    },
+}
+
 logger = logging.getLogger(__name__)
 ua = UserAgent()
 session = requests.Session()
@@ -21,12 +36,12 @@ session.headers.update({
 })
 
 
-@shared_task(bind=True, max_retries=3, default_retry_delay=60, autoretry_for=(requests.exceptions.RequestException,))
-def fetch_and_save_mobile_details(self, product_id):
+@shared_task
+def fetch_and_save_product_details(product_id, product_type):
     """
     Fetches and saves focused product information, leveraging bulk operations and relational models.
     """
-    url = DETAIL_API_URL_MOBILE.format(product_id=product_id)
+    url = SCRAPE_CONFIG[product_type]['detail_url'].format(product_id=product_id)
     logger.info(f"Processing product ID: {product_id}")
     
     try:
@@ -44,9 +59,12 @@ def fetch_and_save_mobile_details(self, product_id):
             return f"Skipped {product_id}: Missing brand or category."
 
         with transaction.atomic():
+            logo_url = brand_data.get('logo', {}).get('url', '')
+            if logo_url:
+                logo_url = logo_url[0]
             brand, _ = Brand.objects.update_or_create(
                 api_id=brand_data['id'],
-                defaults={'code': brand_data.get('code', ''), 'title_fa': brand_data.get('title_fa', ''), 'title_en': brand_data.get('title_en', ''), 'logo_url': brand_data.get('logo', {}).get('url', '')[0]}
+                defaults={'code': brand_data.get('code', ''), 'title_fa': brand_data.get('title_fa', ''), 'title_en': brand_data.get('title_en', ''), 'logo_url': logo_url}
             )
             category, _ = Category.objects.update_or_create(
                 api_id=category_data['id'],
@@ -54,7 +72,7 @@ def fetch_and_save_mobile_details(self, product_id):
             )
 
             review_data = product_data.get('review', {})
-            mobile, created = Mobile.objects.update_or_create(
+            product, created = Product.objects.update_or_create(
                 api_id=product_data['id'],
                 defaults={
                     'title_fa': product_data.get('title_fa'),
@@ -68,21 +86,21 @@ def fetch_and_save_mobile_details(self, product_id):
                 }
             )
 
-            ReviewAttribute.objects.filter(mobile=mobile).delete()
+            ReviewAttribute.objects.filter(product=product).delete()
             review_attrs_to_create = []
             for attr in review_data.get('attributes', []):
                 # Join the list of values into a single string
                 value_str = ", ".join(attr.get('values', [])).strip()
                 if attr.get('title') and value_str:
                     review_attrs_to_create.append(ReviewAttribute(
-                        mobile=mobile,
+                        product=product,
                         title=attr['title'],
                         value=value_str
                     ))
             if review_attrs_to_create:
                 ReviewAttribute.objects.bulk_create(review_attrs_to_create)
 
-            MobileSpecification.objects.filter(mobile=mobile).delete()
+            ProductSpecification.objects.filter(product=product).delete()
             specs_to_create = []
             for group_data in product_data.get('specifications', []):
                 if not (group_title := group_data.get('title')):
@@ -99,27 +117,27 @@ def fetch_and_save_mobile_details(self, product_id):
                     # Join multiple values into a clean, comma-separated string
                     value_str = ", ".join(val.strip() for val in attr_data.get('values', []) if val and val.strip())
                     if value_str:
-                        specs_to_create.append(MobileSpecification(
-                            mobile=mobile,
+                        specs_to_create.append(ProductSpecification(
+                            product=product,
                             attribute=attribute,
                             value=value_str
                         ))
             if specs_to_create:
-                MobileSpecification.objects.bulk_create(specs_to_create)
-            
-            MobileImage.objects.filter(mobile=mobile).delete()
+                ProductSpecification.objects.bulk_create(specs_to_create)
+
+            ProductImage.objects.filter(product=product).delete()
             images_to_create = []
             main_image_url = product_data.get('images', {}).get('main', {}).get('url', [None])[0]
             for img_data in product_data.get('images', {}).get('list', []):
                 if (urls := img_data.get('url')) and isinstance(urls, list) and urls:
-                    images_to_create.append(MobileImage(
-                        mobile=mobile, image_url=urls[0], is_main=(urls[0] == main_image_url)
+                    images_to_create.append(ProductImage(
+                        product=product, image_url=urls[0], is_main=(urls[0] == main_image_url)
                     ))
             if images_to_create:
-                MobileImage.objects.bulk_create(images_to_create)
+                ProductImage.objects.bulk_create(images_to_create)
 
 
-            Variant.objects.filter(mobile=mobile).delete()
+            Variant.objects.filter(product=product).delete()
             variants_to_create = []
             for variant_data in product_data.get('variants', []):
                 if not (variant_id := variant_data.get('id')):
@@ -128,7 +146,7 @@ def fetch_and_save_mobile_details(self, product_id):
                 price_info = variant_data.get('price', {})
                 variants_to_create.append(Variant(
                     api_id=variant_id,
-                    mobile=mobile,
+                    product=product,
                     seller_name=variant_data.get('seller', {}).get('title', ''),
                     color_name=variant_data.get('color', {}).get('title', ''),
                     color_hex=variant_data.get('color', {}).get('hex_code', ''),
@@ -148,17 +166,16 @@ def fetch_and_save_mobile_details(self, product_id):
         return f"Failed {product_id}: IntegrityError"
     except Exception as e:
         logger.exception(f"CRITICAL UNEXPECTED ERROR for product ID {product_id}: {e}")
-        raise self.retry(exc=e)
 
 
 @shared_task
-def scrape_mobile_products(start_page=1, max_pages=5):
-    """Scrape mobile products from the API and save them to the database."""
-    logger.info(f"Starting mobile product scrape from page {start_page} for {max_pages} pages.")
+def scrape_products(product_type, start_page=1, max_pages=20):
+    """Scrape products from the API and save them to the database."""
+    logger.info(f"Starting product scrape from page {start_page} for {max_pages} pages.")
     processed_count = 0
     for page_num in range(start_page, start_page + max_pages):
         try:
-            url = LIST_API_URL_MOBILE.format(page=page_num)
+            url = SCRAPE_CONFIG[product_type]['list_url'].format(page=page_num)
             response = session.get(url, timeout=15)
             response.raise_for_status()
             api_data = response.json().get('data', {})
@@ -169,8 +186,8 @@ def scrape_mobile_products(start_page=1, max_pages=5):
 
             for product in products:
                 product_id = product.get('id')
-                if product_id and not Mobile.objects.filter(api_id=product_id).exists():
-                    fetch_and_save_mobile_details.delay(product_id)
+                if product_id and not Product.objects.filter(api_id=product_id).exists():
+                    fetch_and_save_product_details.delay(product_id, product_type=product_type)
                     processed_count += 1
 
             logger.info(f"Queued tasks for {len([p for p in products if p.get('id')])} new products from page {page_num}.")
@@ -181,5 +198,20 @@ def scrape_mobile_products(start_page=1, max_pages=5):
             logger.exception(f"An unexpected error on page {page_num}: {e}")
             continue
 
-    logger.info(f"Mobile product scraping task finished. Queued {processed_count} new products.")
+    logger.info(f"Product scraping task finished. Queued {processed_count} new products.")
     return f"Scraping completed: {processed_count} products queued."
+
+
+@shared_task
+def run_all_products_scrape():
+    """
+    A master task that initiates scraping for all configured product types.
+    This is ideal for scheduling with Celery Beat.
+    """
+    logger.info("Starting scrapes for all configured product types.")
+    for product_type in SCRAPE_CONFIG.keys():
+        if SCRAPE_CONFIG[product_type]['list_url']: # Only run if URL is configured
+            scrape_products.delay(product_type=product_type)
+        else:
+            logger.warning(f"Skipping scrape for '{product_type}': LIST_API_URL not configured.")
+    return "All scrape tasks have been queued."

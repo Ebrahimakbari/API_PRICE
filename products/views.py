@@ -3,15 +3,15 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from .models import Mobile, Brand, Category
+from .models import Product, Brand, Category
 from .serializers import (
-    MobileSerializer, MobileListSerializer, BrandSerializer, CategorySerializer
+    ProductSerializer, ProductListSerializer, BrandSerializer, CategorySerializer
 )
 
 
-class MobileListView(APIView):
+class ProductListView(APIView):
     """
-    Retrieve a list of mobile phones with optional filtering and sorting.
+    Retrieve a list of Product phones with optional filtering and sorting.
     
     Query Parameters:
     - brand: Filter by brand ID
@@ -21,10 +21,10 @@ class MobileListView(APIView):
     - search: Search in title_en and title_fa fields (case-insensitive)
     
     Returns:
-    - List of mobile phones sorted by rating (descending) and creation date (descending)
+    - List of Product phones sorted by rating (descending) and creation date (descending)
     """
     def get(self, request):
-        queryset = Mobile.objects.all()
+        queryset = Product.objects.all()
         brand_id = request.query_params.get('brand')
         category_id = request.query_params.get('category')
         status_filter = request.query_params.get('status')
@@ -45,38 +45,38 @@ class MobileListView(APIView):
             )
 
         queryset = queryset.order_by('-rating_rate', '-created_at')
-        serializer = MobileListSerializer(queryset, many=True)
+        serializer = ProductListSerializer(queryset, many=True)
         return Response(serializer.data)
 
     def post(self, request):
-        serializer = MobileSerializer(data=request.data)
+        serializer = ProductSerializer(data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-class MobileDetailView(APIView):
+class ProductDetailView(APIView):
     """
-    API endpoint to retrieve a specific mobile by ID or slug.
-    Supports PUT for updating and DELETE for removing the mobile.
+    API endpoint to retrieve a specific Product by ID or slug.
+    Supports PUT for updating and DELETE for removing the Product.
     """
     def get(self, request, lookup):
         try:
             pk = int(lookup)
-            mobile = get_object_or_404(Mobile, pk=pk)
+            product = get_object_or_404(Product, pk=pk)
         except ValueError:
-            mobile = get_object_or_404(Mobile, slug=lookup)
-        serializer = MobileSerializer(mobile)
+            product = get_object_or_404(Product, slug=lookup)
+        serializer = ProductSerializer(product)
         return Response(serializer.data)
 
     def put(self, request, lookup):
         try:
             pk = int(lookup)
-            mobile = get_object_or_404(Mobile, pk=pk)
+            product = get_object_or_404(Product, pk=pk)
         except ValueError:
-            mobile = get_object_or_404(Mobile, slug=lookup)
-        serializer = MobileSerializer(mobile, data=request.data)
+            product = get_object_or_404(Product, slug=lookup)
+        serializer = ProductSerializer(product, data=request.data)
         if serializer.is_valid():
             serializer.save()
             return Response(serializer.data)
@@ -85,10 +85,10 @@ class MobileDetailView(APIView):
     def delete(self, request, lookup):
         try:
             pk = int(lookup)
-            mobile = get_object_or_404(Mobile, pk=pk)
+            product = get_object_or_404(Product, pk=pk)
         except ValueError:
-            mobile = get_object_or_404(Mobile, slug=lookup)
-        mobile.delete()
+            product = get_object_or_404(Product, slug=lookup)
+        product.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -188,22 +188,23 @@ class CategoryDetailView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class MobileSearchView(APIView):
+class ProductSearchView(APIView):
     """
-    API endpoint for advanced search of mobiles by title, brand, or category.
+    API endpoint for advanced search of Products by title, brand, api_id or category.
     """
     def get(self, request):
         query = request.query_params.get('q', '')
         if not query:
             return Response({'error': 'Query parameter "q" is required.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        queryset = Mobile.objects.filter(
+        queryset = Product.objects.filter(
             Q(title_en__icontains=query) |
             Q(title_fa__icontains=query) |
             Q(brand__title_en__icontains=query) |
             Q(brand__title_fa__icontains=query) |
+            Q(api_id__iexact=query) |
             Q(category__title_fa__icontains=query)
         ).order_by('-rating_rate')
         
-        serializer = MobileListSerializer(queryset, many=True)
+        serializer = ProductListSerializer(queryset, many=True)
         return Response(serializer.data)
