@@ -24,6 +24,10 @@ SCRAPE_CONFIG = {
         'list_url': config('LIST_API_URL_PC'),
         'detail_url': config('DETAIL_API_URL_PC'),
     },
+    'console': {
+        'list_url': config('LIST_API_URL_CONSOLE'),
+        'detail_url': config('DETAIL_API_URL_CONSOLE'),
+    }
 }
 
 logger = logging.getLogger(__name__)
@@ -34,6 +38,42 @@ session.headers.update({
     'Accept': 'application/json, text/plain, */*',
     'Referer': 'https://www.digikala.com/',
 })
+
+
+def safe_get(data, *keys, default=''):
+    """
+    Safely get nested values from dict/list structures.
+    
+    Args:
+        data: The data structure to get value from
+        *keys: Keys/indices to traverse (e.g., 'rating', 'rate')
+        default: Default value if path doesn't exist
+    
+    Returns:
+        The value at the path or default if not found
+    """
+    if not data:
+        return default
+        
+    current = data
+    for key in keys:
+        try:
+            if isinstance(current, (list, tuple)):
+                # Handle list indices or get first element if key is not an integer
+                current = current[key] if isinstance(key, int) else current[0]
+            elif isinstance(current, dict):
+                current = current.get(key, default)
+            else:
+                return default
+                
+            if current is None:
+                return default
+                
+        except (IndexError, KeyError, TypeError):
+            return default
+            
+    return current
+
 
 
 @shared_task
@@ -50,51 +90,56 @@ def fetch_and_save_product_details(product_id, product_type):
         data = response.json().get('data', {})
         product_data = data.get('product')
 
-        if not (product_data and product_data.get('id')):
+        if not (product_data and safe_get(product_data, 'id')):
             return f"Skipped {product_id}: No product data."
 
-        brand_data = product_data.get('brand')
-        category_data = product_data.get('category')
-        if not (brand_data and brand_data.get('id') and category_data and category_data.get('id')):
+        brand_data = safe_get(product_data, 'brand')
+        category_data = safe_get(product_data, 'category')
+        if not (brand_data and safe_get(brand_data, 'id') and category_data and safe_get(category_data, 'id')):
             return f"Skipped {product_id}: Missing brand or category."
 
         with transaction.atomic():
-            logo_url = brand_data.get('logo', {}).get('url', '')
-            if logo_url:
-                logo_url = logo_url[0]
             brand, _ = Brand.objects.update_or_create(
-                api_id=brand_data['id'],
-                defaults={'code': brand_data.get('code', ''), 'title_fa': brand_data.get('title_fa', ''), 'title_en': brand_data.get('title_en', ''), 'logo_url': logo_url}
+                api_id=safe_get(brand_data, 'id'),
+                defaults={
+                    'code': safe_get(brand_data, 'code'),
+                    'title_fa': safe_get(brand_data, 'title_fa'),
+                    'title_en': safe_get(brand_data, 'title_en'),
+                    'logo_url': safe_get(brand_data, 'logo', 'url', 0)
+                }
             )
+            
             category, _ = Category.objects.update_or_create(
-                api_id=category_data['id'],
-                defaults={'code': category_data.get('code', ''), 'title_fa': category_data.get('title_fa', ''), 'title_en': category_data.get('title_en', '')}
+                api_id=safe_get(category_data, 'id'),
+                defaults={
+                    'code': safe_get(category_data, 'code'),
+                    'title_fa': safe_get(category_data, 'title_fa'),
+                    'title_en': safe_get(category_data, 'title_en')
+                }
             )
 
-            review_data = product_data.get('review', {})
             product, created = Product.objects.update_or_create(
-                api_id=product_data['id'],
+                api_id=safe_get(product_data, 'id'),
                 defaults={
-                    'title_fa': product_data.get('title_fa'),
-                    'title_en': product_data.get('title_en'),
+                    'title_fa': safe_get(product_data, 'title_fa'),
+                    'title_en': safe_get(product_data, 'title_en'),
                     'brand': brand,
                     'category': category,
-                    'status': product_data.get('status', 'unavailable'),
-                    'rating_rate': product_data.get('rating', {}).get('rate', 0),
-                    'rating_count': product_data.get('rating', {}).get('count', 0),
-                    'review_description': review_data.get('description', ''),
+                    'status': safe_get(product_data, 'status', default='unavailable'),
+                    'rating_rate': safe_get(product_data, 'rating', 'rate', default=0),
+                    'rating_count': safe_get(product_data, 'rating', 'count', default=0),
+                    'review_description': safe_get(product_data, 'review', 'description'),
                 }
             )
 
             ReviewAttribute.objects.filter(product=product).delete()
             review_attrs_to_create = []
-            for attr in review_data.get('attributes', []):
-                # Join the list of values into a single string
-                value_str = ", ".join(attr.get('values', [])).strip()
-                if attr.get('title') and value_str:
+            for attr in safe_get(product_data, 'review', 'attributes', default=[]):
+                value_str = ", ".join(safe_get(attr, 'values', default=[])).strip()
+                if safe_get(attr, 'title') and value_str:
                     review_attrs_to_create.append(ReviewAttribute(
                         product=product,
-                        title=attr['title'],
+                        title=safe_get(attr, 'title'),
                         value=value_str
                     ))
             if review_attrs_to_create:
@@ -102,20 +147,26 @@ def fetch_and_save_product_details(product_id, product_type):
 
             ProductSpecification.objects.filter(product=product).delete()
             specs_to_create = []
-            for group_data in product_data.get('specifications', []):
-                if not (group_title := group_data.get('title')):
+            for group_data in safe_get(product_data, 'specifications', default=[]):
+                group_title = safe_get(group_data, 'title')
+                if not group_title:
                     continue
-                # Get or create the specification group (e.g., 'Display')
                 group, _ = SpecGroup.objects.get_or_create(title=group_title)
 
-                for attr_data in group_data.get('attributes', []):
-                    if not (attr_title := attr_data.get('title')):
+                for attr_data in safe_get(group_data, 'attributes', default=[]):
+                    attr_title = safe_get(attr_data, 'title')
+                    if not attr_title:
                         continue
-                    # Get or create the specific attribute (e.g., 'Resolution')
-                    attribute, _ = SpecAttribute.objects.get_or_create(group=group, title=attr_title)
+                    attribute, _ = SpecAttribute.objects.get_or_create(
+                        group=group, 
+                        title=attr_title
+                    )
                     
-                    # Join multiple values into a clean, comma-separated string
-                    value_str = ", ".join(val.strip() for val in attr_data.get('values', []) if val and val.strip())
+                    value_str = ", ".join(
+                        val.strip() 
+                        for val in safe_get(attr_data, 'values', default=[]) 
+                        if val and val.strip()
+                    )
                     if value_str:
                         specs_to_create.append(ProductSpecification(
                             product=product,
@@ -127,32 +178,35 @@ def fetch_and_save_product_details(product_id, product_type):
 
             ProductImage.objects.filter(product=product).delete()
             images_to_create = []
-            main_image_url = product_data.get('images', {}).get('main', {}).get('url', [None])[0]
-            for img_data in product_data.get('images', {}).get('list', []):
-                if (urls := img_data.get('url')) and isinstance(urls, list) and urls:
+            main_image_url = safe_get(product_data, 'images', 'main', 'url', 0)
+            for img_data in safe_get(product_data, 'images', 'list', default=[]):
+                urls = safe_get(img_data, 'url')
+                if urls and isinstance(urls, list) and urls:
                     images_to_create.append(ProductImage(
-                        product=product, image_url=urls[0], is_main=(urls[0] == main_image_url)
+                        product=product, 
+                        image_url=urls[0], 
+                        is_main=(urls[0] == main_image_url)
                     ))
             if images_to_create:
                 ProductImage.objects.bulk_create(images_to_create)
 
-
             Variant.objects.filter(product=product).delete()
             variants_to_create = []
-            for variant_data in product_data.get('variants', []):
-                if not (variant_id := variant_data.get('id')):
+            for variant_data in safe_get(product_data, 'variants', default=[]):
+                variant_id = safe_get(variant_data, 'id')
+                if not variant_id:
                     continue
                 
-                price_info = variant_data.get('price', {})
+                price_info = safe_get(variant_data, 'price', default={})
                 variants_to_create.append(Variant(
                     api_id=variant_id,
                     product=product,
-                    seller_name=variant_data.get('seller', {}).get('title', ''),
-                    color_name=variant_data.get('color', {}).get('title', ''),
-                    color_hex=variant_data.get('color', {}).get('hex_code', ''),
-                    warranty_name=variant_data.get('warranty', {}).get('title_fa', ''),
-                    selling_price=price_info.get('selling_price', 0) // 10,
-                    rrp_price=price_info.get('rrp_price', 0) // 10,
+                    seller_name=safe_get(variant_data, 'seller', 'title'),
+                    color_name=safe_get(variant_data, 'color', 'title'),
+                    color_hex=safe_get(variant_data, 'color', 'hex_code'),
+                    warranty_name=safe_get(variant_data, 'warranty', 'title_fa'),
+                    selling_price=safe_get(price_info, 'selling_price', default=0) // 10,
+                    rrp_price=safe_get(price_info, 'rrp_price', default=0) // 10,
                 ))
             if variants_to_create:
                 Variant.objects.bulk_create(variants_to_create)
@@ -169,7 +223,7 @@ def fetch_and_save_product_details(product_id, product_type):
 
 
 @shared_task
-def scrape_products(product_type, start_page=1, max_pages=20):
+def scrape_products(product_type, start_page=1, max_pages=30):
     """Scrape products from the API and save them to the database."""
     logger.info(f"Starting product scrape from page {start_page} for {max_pages} pages.")
     processed_count = 0

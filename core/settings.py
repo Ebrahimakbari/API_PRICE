@@ -277,7 +277,7 @@ CELERY_BEAT_SCHEDULE = {
         'schedule': crontab(minute='*/2'),
     },
     'scrape-mobile-prices-every-15-minutes': {
-        'task': 'mobiles.tasks.scrape_mobile_products',
+        'task': 'products.tasks.run_all_products_scrape',
         'schedule': crontab(minute='*/2'),
     },
 }
