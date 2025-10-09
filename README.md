@@ -10,7 +10,7 @@ A public API to track the daily prices of cars, motorcycles, electronic-devices(
 
 The entire application is containerized with Docker for easy setup, development, and deployment.
 
-## Target Sraping APIs
+## Target Scraping APIs
 
 [Cars](https://khodro45.com/api/v1/pricing/dailycars/)
 
