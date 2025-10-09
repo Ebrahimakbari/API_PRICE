@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from .models import (
-    Brand, Category, Product, ReviewAttribute, SpecGroup, SpecAttribute,
+    Brand, Category, PriceHistory, Product, ReviewAttribute, SpecGroup, SpecAttribute,
     ProductSpecification, Variant, ProductImage
 )
 
@@ -51,10 +51,18 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ['id', 'image_url', 'is_main']
 
 
+class PriceHistorySerializer(serializers.ModelSerializer):
+    """ Serializes a single price history entry. """
+    class Meta:
+        model = PriceHistory
+        fields = ['selling_price', 'rrp_price', 'timestamp']
+
+
 class VariantSerializer(serializers.ModelSerializer):
+    price_history = PriceHistorySerializer(many=True, read_only=True)
     class Meta:
         model = Variant
-        fields = ['id', 'api_id', 'seller_name', 'color_name', 'color_hex', 'warranty_name', 'selling_price', 'rrp_price']
+        fields = ['id', 'api_id', 'seller_name', 'color_name', 'color_hex', 'warranty_name', 'selling_price', 'rrp_price', 'price_history']
 
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -88,11 +96,22 @@ class ProductListSerializer(serializers.ModelSerializer):
     specifications = ProductSpecificationSerializer(many=True, read_only=True)
     images = ProductImageSerializer(many=True, read_only=True)
     review_attributes = ReviewAttributeSerializer(many=True, read_only=True)
+    cheapest_variant = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'api_id', 'slug', 'title_fa', 'title_en', 'status', 'brand', 'category','review_description',
             'rating_rate', 'rating_count', 'created_at', 'updated_at', 'variants', 'specifications', 'images',
-            'review_attributes',
+            'review_attributes','cheapest_variant'
         ]
+        
+    def get_cheapest_variant(self, obj):
+        # Provides a quick look at the current lowest price
+        cheapest = obj.variants.order_by('selling_price').first()
+        if cheapest:
+            return {
+                'selling_price': cheapest.selling_price,
+                'rrp_price': cheapest.rrp_price
+            }
+        return None

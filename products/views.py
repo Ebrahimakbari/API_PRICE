@@ -3,9 +3,9 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from django.db.models import Q
-from .models import Product, Brand, Category
+from .models import PriceHistory, Product, Brand, Category
 from .serializers import (
-    ProductSerializer, ProductListSerializer, BrandSerializer, CategorySerializer
+    PriceHistorySerializer, ProductSerializer, ProductListSerializer, BrandSerializer, CategorySerializer
 )
 
 
@@ -207,4 +207,22 @@ class ProductSearchView(APIView):
         ).order_by('-rating_rate')
         
         serializer = ProductListSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+
+class ProductPriceHistoryView(APIView):
+    """
+    Provides the price history for all variants of a specific product.
+    """
+    def get(self, request, lookup, format=None):
+        """
+        Handles the GET request to retrieve price history.
+        """
+        product_filter = Q(api_id=lookup)
+        product = get_object_or_404(Product, product_filter)
+        queryset = PriceHistory.objects.filter(
+            variant__product=product
+        ).select_related('variant').order_by('variant__api_id', '-timestamp')
+        
+        serializer = PriceHistorySerializer(queryset, many=True)
         return Response(serializer.data)

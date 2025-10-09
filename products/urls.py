@@ -15,4 +15,7 @@ urlpatterns = [
     path('products/', views.ProductListView.as_view(), name='product-list'),
     path('products/search/', views.ProductSearchView.as_view(), name='product-search'),
     path('products/<str:lookup>/', views.ProductDetailView.as_view(), name='product-detail'),
+    
+    # e.g., /api/v1/products/iphone-14-pro/history/ or /api/v1/products/123/history/
+    path('products/<str:lookup>/history/', views.ProductPriceHistoryView.as_view(), name='product-price-history'),
 ]

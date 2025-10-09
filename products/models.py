@@ -144,3 +144,20 @@ class ProductImage(models.Model):
     
     class Meta:
         unique_together = ('product', 'image_url')
+
+
+class PriceHistory(models.Model):
+    """
+    Stores a historical record of a variant's price at a specific point in time.
+    A new record is created only when the price changes.
+    """
+    variant = models.ForeignKey(Variant, on_delete=models.CASCADE, related_name="price_history")
+    selling_price = models.PositiveIntegerField()
+    rrp_price = models.PositiveIntegerField()
+    timestamp = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ['-timestamp'] # Order by most recent price first
+
+    def __str__(self):
+        return f"{self.variant.api_id} - Price: {self.selling_price} on {self.timestamp.strftime('%Y-%m-%d')}"
