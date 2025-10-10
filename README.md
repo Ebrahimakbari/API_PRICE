@@ -28,6 +28,8 @@ The entire application is containerized with Docker for easy setup, development,
 
 [PC-List](https://api.digikala.com/v1/categories/notebook-netbook-ultrabook/search/?page=20184035)
 
+[Personal-List](https://api.digikala.com/v1/categories/sexual-hygiene-health/search/?page=73186661)
+
 [Digital-devices-Detail](https://api.digikala.com/v2/product/19347047/)
 
 ## Features

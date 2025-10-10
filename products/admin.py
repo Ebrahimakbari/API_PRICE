@@ -95,7 +95,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ('title_en', 'title_fa', 'brand__title_en', 'brand__title_fa')
     list_filter = ('status', 'brand', 'category', 'created_at')
     ordering = ('-created_at',)
-    readonly_fields = ('api_id', 'slug', 'created_at', 'updated_at')
+    readonly_fields = ('api_id', 'slug', 'created_at', 'updated_at', 'price_history_preview')
     inlines = [VariantInline, ProductImageInline, ReviewAttributeInline, 
                ProductSpecificationInline]
     
@@ -132,7 +132,7 @@ class ProductAdmin(admin.ModelAdmin):
             latest_price = latest_variant.price_history.first()
             if latest_price:
                 return f"Current: {latest_price.selling_price} / RRP: {latest_price.rrp_price}"
-        return "No Price History"
+        return "No Price"
     current_price.short_description = 'Current Price'
 
     def price_history_preview(self, obj):
@@ -158,10 +158,14 @@ class ProductAdmin(admin.ModelAdmin):
             'brand', 'category'
         ).prefetch_related(
             Prefetch('variants', queryset=Variant.objects.all().order_by('-selling_price')),
+            Prefetch(
+                'variants__price_history',
+                queryset=PriceHistory.objects.all().order_by('-timestamp'),
+                to_attr='sorted_price_history'
+            ),
             'images',
             'review_attributes',
-            'specifications__attribute__group',
-            Prefetch('variants__price_history', queryset=PriceHistory.objects.all().order_by('-timestamp'))
+            'specifications__attribute__group'
         )
 
 
