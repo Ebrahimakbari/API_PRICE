@@ -6,7 +6,7 @@
 
 ## Description
 
-A public API to track the daily prices of cars, motorcycles, electronic-devices(like: mobiles, laptops, gadgets, ...) and financial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.ial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.
+A public API to track the daily prices of cars, motorcycles, electronic-devices(like: mobiles, laptops, gadgets, ...) and financial assets like currencies and precious metals. This project periodically scrapes data from external sources, stores it, and exposes it through a clean, documented RESTful API.
 
 The entire application is containerized with Docker for easy setup, development, and deployment.
 
