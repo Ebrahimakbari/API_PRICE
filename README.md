@@ -234,5 +234,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-Ebrahim Akbari - [Your Email](mailto:y560mia3@gmail.com)  
+Ebrahim Akbari - [Email](y560mia3@gmail.com)  
 Project Link: [https://github.com/Ebrahimakbari/API_PRICE](https://github.com/Ebrahimakbari/API_PRICE)
